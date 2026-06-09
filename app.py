@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
+import io
 
-# 1. SETTING LAYOUT (Menggunakan 'wide' agar pas di browser Streamlit Cloud)
+# 1. SETTING LAYOUT (Tampilan Penuh)
 st.set_page_config(page_title="Email Template Generator - FDS", layout="wide")
 
 st.title("✉️ Smart Email Template Generator - Fraud Analyst")
 st.write("Unggah file CSV/Excel untuk menganalisis pola fraud dan membuat draf email FDS secara otomatis.")
 
-# Fungsi pembantu untuk format tanggal yang aman di server Linux (Streamlit Cloud)
+# Fungsi pembantu untuk format tanggal yang aman di server Cloud
 def format_date(dt):
     if pd.isnull(dt):
         return ""
@@ -16,13 +17,11 @@ def format_date(dt):
 # --- MENU PENGATURAN DI SIDEBAR ---
 st.sidebar.header("⚙️ Pengaturan Dinamis")
 
-# Pilihan Tipe Email Menggunakan Dropdown
 email_mode = st.sidebar.selectbox(
     "Kirim Teks Email Ke:",
-    options=["Deteksi Otomatis", "Issuer (Bank)", "Acquirer (Merchant/Payment Gateway)"]
+    options=["Deteksi Otomatis", "Issuer (Member)", "Acquirer (Merchant)"]
 )
 
-# Input nama target dinamis
 target_name = st.sidebar.text_input("Nama Target (cth: Seabank / Xendit)", value="Seabank")
 
 # --- KOMPONEN UPLOAD FILE ---
@@ -30,25 +29,42 @@ uploaded_file = st.file_uploader("Pilih file CSV atau Excel", type=["csv", "xlsx
 
 if uploaded_file is not None:
     try:
-        # 1. Proses Pembacaan File (Mendukung CSV dan Excel dengan Auto-Fallback)
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        else:
-            try:
-                # Coba baca sebagai Excel terlebih dahulu
-                df = pd.read_excel(uploaded_file)
-            except Exception as excel_err:
-                # Jika error OLE2, kemungkinan ini adalah file CSV yang dinamai .xls/.xlsx
-                if "OLE2 compound document" in str(excel_err) or "Workbook" in str(excel_err):
-                    try:
-                        # Fallback: Coba baca ulang menggunakan read_csv
-                        df = pd.read_csv(uploaded_file)
-                    except Exception as csv_err:
-                        raise excel_err
-                else:
-                    raise excel_err
+        # Membaca data mentah sebagai bytes
+        file_bytes = uploaded_file.read()
+        
+        # LOGIKA DETEKSI SUPER AMAN: Memeriksa isi jeroan file sesungguhnya
+        try:
+            # Mengintip 2000 karakter pertama file
+            text_sample = file_bytes[:2000].decode('utf-8', errors='ignore')
             
-        st.success("File berhasil diunggah dan dianalisis secara otomatis!")
+            # Jika isinya mengandung format teks terpisah atau tag HTML spreadsheet bawaan export sistem
+            if ',' in text_sample or ';' in text_sample or '\t' in text_sample or 'Date_Time' in text_sample or '<table' in text_sample:
+                # Tentukan pemisah otomatis (koma atau titik koma)
+                sep = ';' if ';' in text_sample and ',' not in text_sample else ','
+                df = pd.read_csv(io.BytesIO(file_bytes), sep=sep)
+            else:
+                # Jika jeroannya biner (Excel asli)
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(io.BytesIO(file_bytes))
+                else:
+                    df = pd.read_excel(io.BytesIO(file_bytes))
+        except Exception:
+            # Cadangan terakhir jika deteksi otomatis gagal
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(io.BytesIO(file_bytes))
+            else:
+                try:
+                    df = pd.read_excel(io.BytesIO(file_bytes))
+                except Exception:
+                    # Jika read_excel gagal karena OLE2 (Excel palsu), paksa baca sebagai teks/csv
+                    df = pd.read_csv(io.BytesIO(file_bytes), on_bad_lines='skip')
+
+        # Memastikan data berhasil dimuat ke tabel
+        if df.empty:
+            st.error("File kosong atau tidak dapat dibaca strateginya.")
+            st.stop()
+
+        st.success("File Microsoft Excel Workbook berhasil dimuat dan dianalisis!")
 
         # 2. Pembersihan Data Masukan (Data Cleaning)
         for col in df.columns:
@@ -64,16 +80,13 @@ if uploaded_file is not None:
 
         # ================= LOGIKA OTOMATISASI DATA FRAUD =================
         
-        # A. Otomatisasi Hitung Total Nominal & Total Baris Transaksi
         total_trx = len(df)
         total_amount = int(df['Amount_Trx'].sum()) if 'Amount_Trx' in df.columns else 0
         formatted_amount = f"{total_amount:,}".replace(",", ".")
 
-        # B. Otomatisasi Deteksi Rentang Waktu (Terawal dan Terakhir)
         min_date = format_date(df['Date_Time'].min()) if 'Date_Time' in df.columns else ""
         max_date = format_date(df['Date_Time'].max()) if 'Date_Time' in df.columns else ""
 
-        # C. Otomatisasi Deteksi Dominasi Nominal vs Pola Angka Unik
         if 'Amount_Trx' in df.columns and not df['Amount_Trx'].empty:
             nominal_counts = df['Amount_Trx'].value_counts()
             if not nominal_counts.empty:
@@ -90,7 +103,6 @@ if uploaded_file is not None:
         else:
             indikasi_nominal = "Transaksi didominasi dengan pola angka unik"
 
-        # D. Otomatisasi Analisis Hubungan Kondisional CPAN & Merchant (Case a, b, c)
         unique_cpans = df['CPAN_Masking'].nunique() if 'CPAN_Masking' in df.columns else 0
         unique_merchants = df['Merchant_Name'].nunique() if 'Merchant_Name' in df.columns else 0
         
@@ -119,21 +131,20 @@ if uploaded_file is not None:
 
         # =================================================================
 
-        # 3. LOGIKA SELEKSI BERDASARKAN DROPDOWN
-        if email_mode == "Issuer (Bank)":
+        # Penentuan mode berdasarkan Dropdown
+        if email_mode == "Issuer (Member)":
             is_merchant_case = False
             sumber_pilihan = "Manual (Dropdown)"
-        elif email_mode == "Acquirer (Merchant/Payment Gateway)":
+        elif email_mode == "Acquirer (Merchant)":
             is_merchant_case = True
             sumber_pilihan = "Manual (Dropdown)"
         else:
-            # Jika memilih "Deteksi Otomatis"
             is_merchant_case = auto_merchant_case
             sumber_pilihan = "Sistem (Otomatis)"
 
-        # 4. PENYUSUNAN TEMPLATE EMAIL
+        # Pemilihan struktur template draf email
         if is_merchant_case:
-            # --- TEMPLATE ACQUIRER / MERCHANTS (Contoh: Team Xendit) ---
+            # --- TEMPLATE ACQUIRER / MERCHANTS ---
             email_text = f"""Dear Team {target_name},
 
 Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai penyelenggara infrastruktur pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Merchant {m_name}
@@ -165,7 +176,7 @@ Hotline Whatsapp : 0851 7968 1636
 PT. ALTO Network"""
 
         else:
-            # --- TEMPLATE ISSUER / BANK (Contoh: Rekan Seabank) ---
+            # --- TEMPLATE ISSUER / BANK ---
             email_text = f"""Dear Rekan {target_name},
 
 Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_display}).
@@ -196,17 +207,13 @@ Enterprise, Architecture & Cybersecurity
 Hotline Whatsapp : 0851 7968 1636
 PT. ALTO Network"""
 
-        # --- TAMPILAN OUTPUT UTAMA PADA LAYOUT ---
+        # --- TAMPILAN OUTPUT UTAMA ---
         st.subheader("📋 Hasil Generate Teks Email")
-        
-        # Tampilkan status penentuan template di layar browser
         status_template = "Acquirer (Merchant)" if is_merchant_case else "Issuer (Bank)"
         st.info(f"⚙️ **Mode Aktif:** Menggunakan template **{status_template}** berdasarkan pilihan **{sumber_pilihan}**.")
 
-        # Kotak teks hasil otomatisasi
         st.text_area("Salin teks hasil otomatisasi di bawah ini:", value=email_text, height=480)
         
-        # Tombol download file otomatis dalam format txt
         st.download_button(
             label="📥 Download Teks Email (.txt)",
             data=email_text,
@@ -214,7 +221,6 @@ PT. ALTO Network"""
             mime="text/plain"
         )
 
-        # Dashboard Metrik Ringkasan
         st.subheader("📊 Metrik Ringkasan Pola Data")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total Frekuensi Transaksi", f"{total_trx} Kali Trx")
@@ -224,4 +230,3 @@ PT. ALTO Network"""
 
     except Exception as e:
         st.error(f"Terjadi kesalahan teknis dalam pemrosesan logika file: {e}")
-        st.info("💡 Tips Cloud: Pastikan nama-nama kolom pada file masukan Anda sudah sesuai seperti 'Date_Time', 'Amount_Trx', 'CPAN_Masking', dan 'Merchant_Name'.")
