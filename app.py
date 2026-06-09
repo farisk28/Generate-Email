@@ -19,7 +19,7 @@ st.sidebar.header("⚙️ Pengaturan Dinamis")
 
 email_mode = st.sidebar.selectbox(
     "Kirim Teks Email Ke:",
-    options=["Deteksi Otomatis", "Issuer (Bank)", "Acquirer (Merchant/Payment Gateway)"]
+    options=["Deteksi Otomatis", "Issuer (Member)", "Acquirer (Merchant)"]
 )
 
 target_name = st.sidebar.text_input("Nama Target (cth: Seabank / Xendit)", value="Seabank")
@@ -29,44 +29,39 @@ uploaded_file = st.file_uploader("Pilih file CSV atau Excel", type=["csv", "xlsx
 
 if uploaded_file is not None:
     try:
-        # Membaca data mentah sebagai bytes
+        # Membaca data mentah sebagai biner murni (bytes)
         file_bytes = uploaded_file.read()
         
-        # LOGIKA DETEKSI SUPER AMAN (Anti-Crash Format Biner & Teks)
-        is_text_file = False
-        sep = ','
+        # JALUR 1: Jika ekstensi file adalah .csv, langsung baca sebagai CSV
+        if uploaded_file.name.endswith('.csv'):
+            try:
+                df = pd.read_csv(io.BytesIO(file_bytes), sep=',')
+            except Exception:
+                df = pd.read_csv(io.BytesIO(file_bytes), sep=';')
         
-        try:
-            # Coba intip 2000 karakter pertama sebagai teks UTF-8
-            text_sample = file_bytes[:2000].decode('utf-8', errors='strict')
-            # Jika berhasil decode tanpa error, periksa tanda pembatas teks (CSV/TSV/HTML)
-            if ',' in text_sample or ';' in text_sample or '\t' in text_sample or 'Date_Time' in text_sample or '<table' in text_sample:
-                is_text_file = True
-                sep = ';' if ';' in text_sample and ',' not in text_sample else ','
-        except UnicodeDecodeError:
-            # Jika error decode, berarti file tersebut adalah BINER asli (Excel asli .xls/.xlsx)
-            is_text_file = False
-
-        # Proses pembuatan Dataframe berdasarkan hasil deteksi jeroan file
-        if is_text_file:
-            df = pd.read_csv(io.BytesIO(file_bytes), sep=sep)
+        # JALUR 2: Jika ekstensi file adalah Excel (.xlsx atau .xls)
         else:
-            # Jalur untuk file Excel Biner asli (.xlsx / .xls asli)
-            if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(io.BytesIO(file_bytes))
-            else:
+            try:
+                # Coba baca sebagai Excel Workbook asli dulu
+                df = pd.read_excel(io.BytesIO(file_bytes))
+            except Exception as excel_err:
+                # JALUR PENYELAMAT: Jika read_excel gagal (misal karena OLE2 / Excel Palsu), 
+                # paksa baca menggunakan read_csv karena seringkali itu adalah file teks terpisah
                 try:
-                    df = pd.read_excel(io.BytesIO(file_bytes))
+                    df = pd.read_csv(io.BytesIO(file_bytes), sep=',')
                 except Exception:
-                    # Fallback darurat jika excel_read bawaan cloud bermasalah
-                    df = pd.read_csv(io.BytesIO(file_bytes), on_bad_lines='skip')
+                    try:
+                        df = pd.read_csv(io.BytesIO(file_bytes), sep=';')
+                    except Exception:
+                        # Jika semua cara gagal, lempar error asli Excel
+                        raise excel_err
 
-        # Memastikan data berhasil dimuat ke tabel
+        # Memastikan data tidak kosong
         if df.empty:
-            st.error("File kosong atau struktur kolom tidak dapat dibaca.")
+            st.error("File berhasil dibaca, namun tidak ditemukan baris data di dalamnya.")
             st.stop()
 
-        st.success("File Microsoft Excel Workbook berhasil dimuat dan dianalisis!")
+        st.success("File data transaksi berhasil dimuat dan dianalisis!")
 
         # 2. Pembersihan Data Masukan (Data Cleaning)
         for col in df.columns:
@@ -126,7 +121,7 @@ if uploaded_file is not None:
             if 'Merchant_Name' in df.columns and unique_merchants > 0:
                 top_merchants = df['Merchant_Name'].value_counts().index[:3].tolist()
                 merchants_str = ", ".join(top_merchants)
-                indikasi_cpan_merchant = f"Transaksi dilakukan oleh beberapa CPAN pada beberapa merchant di antaranya {merchants_str}"
+                indikasi_cpan_merchant = f"Transaksi dilakukan oleh several CPAN pada beberapa merchant di antaranya {merchants_str}"
             else:
                 indikasi_cpan_merchant = "Transaksi dilakukan oleh beberapa CPAN pada beberapa merchant"
             auto_merchant_case = True
@@ -134,10 +129,10 @@ if uploaded_file is not None:
         # =================================================================
 
         # Penentuan mode berdasarkan Dropdown
-        if email_mode == "Issuer (Bank)":
+        if email_mode == "Issuer (Member)":
             is_merchant_case = False
             sumber_pilihan = "Manual (Dropdown)"
-        elif email_mode == "Acquirer (Merchant/Payment Gateway)":
+        elif email_mode == "Acquirer (Merchant)":
             is_merchant_case = True
             sumber_pilihan = "Manual (Dropdown)"
         else:
@@ -178,7 +173,7 @@ Hotline Whatsapp : 0851 7968 1636
 PT. ALTO Network"""
 
         else:
-            # --- TEMPLATE ISSUER / BANK ---
+            # --- TEMPLATE ISSUER / MEMBER ---
             email_text = f"""Dear Rekan {target_name},
 
 Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_display}).
