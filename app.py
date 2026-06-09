@@ -32,16 +32,15 @@ if uploaded_file is not None:
         st.success("File berhasil diunggah dan dianalisis secara otomatis!")
 
         # 2. Pembersihan Data Masukan (Data Cleaning)
-        # Menghapus karakter tanda petik satu (') di awal teks jika terbawa dari raw data
+        # Langkah A: Mengonversi semua kolom menjadi string terlebih dahulu untuk membersihkan petik (')
         for col in df.columns:
-            if df[col].dtype == 'object':
-                df[col] = df[col].astype(str).str.strip("'")
+            df[col] = df[col].astype(str).str.strip("'").str.strip()
                 
-        # Pembersihan spasi berlebih pada Merchant_Name yang lebih aman untuk Streamlit Cloud
+        # Langkah B: Pembersihan khusus untuk spasi berlebih pada nama merchant
         if 'Merchant_Name' in df.columns:
-            df['Merchant_Name'] = df['Merchant_Name'].astype(str).apply(lambda x: " ".join(x.split()))
+            df['Merchant_Name'] = df['Merchant_Name'].apply(lambda x: " ".join(x.split()))
 
-        # Konversi kolom nominal transaksi dan tanggal ke tipe data numerik & datetime pandas
+        # Langkah C: Konversi ulang kolom nominal dan tanggal ke format numerik & datetime yang benar
         if 'Amount_Trx' in df.columns:
             df['Amount_Trx'] = pd.to_numeric(df['Amount_Trx'], errors='coerce')
         if 'Date_Time' in df.columns:
@@ -127,7 +126,7 @@ Adapun indikasi yang kami temukan terkait transaksi tersebut :
 
 Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:  
 Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ?
-Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku?
+If saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku?
 Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?
 
 Mohon dapat menginformasikan kembali hasil pengecekannya, agar kami dapat meningkatkan akurasi pada FDS kami. Jika diperlukan kami juga dapat mendukung terkait kasus fraud yang terkonfirmasi sesuai dengan kewenangan yang diberikan kepada {switching_name}.
@@ -147,7 +146,7 @@ Hotline Whatsapp : 0851 7968 1636
         # --- TAMPILAN OUTPUT UTAMA PADA LAYOUT ---
         st.subheader("📋 Hasil Generate Teks Email")
         
-        # Kotak teks besar hasil generate (bisa dicopy langsung lewat tombol bawaan streamlit di pojok kanan teks area)
+        # Kotak teks besar hasil generate
         st.text_area("Salin teks hasil otomatisasi di bawah ini:", value=email_text, height=480)
         
         # Tombol download file otomatis dalam format txt jika ingin disimpan
@@ -162,7 +161,7 @@ Hotline Whatsapp : 0851 7968 1636
         st.subheader("📊 Metrik Ringkasan Pola Data")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total Frekuensi Transaksi", f"{total_trx} Kali Trx")
-        col2.metric("Total Kerugian / Nominal", f"Rp {formatted_amount}")
+        col2.metric("Total Nominal Terhitung", f"Rp {formatted_amount}")
         col3.metric("Jumlah Unik Kartu (CPAN)", f"{unique_cpans} Card")
         col4.metric("Jumlah Unik Merchant", f"{unique_merchants} Merchant")
 
