@@ -1,76 +1,86 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Email Template Generator - FDS", layout="padded")
-st.title("✉️ Smart Email Template Generator - Fraud Analyst")
-st.write("Unggah file CSV/Excel untuk menganalisis pola fraud dan membuat email secara otomatis.")
+# 1. SETTING LAYOUT (Menggunakan 'wide' agar pas di browser Streamlit Cloud)
+st.set_page_config(page_title="Email Template Generator - FDS", layout="wide")
 
-# Fungsi format tanggal yang aman
+st.title("✉️ Smart Email Template Generator - Fraud Analyst")
+st.write("Unggah file CSV/Excel untuk menganalisis pola fraud dan membuat draf email FDS secara otomatis.")
+
+# Fungsi pembantu untuk format tanggal yang aman di server Linux (Streamlit Cloud)
 def format_date(dt):
     if pd.isnull(dt):
         return ""
     return f"{dt.month}/{dt.day}/{dt.year} {dt.strftime('%H:%M:%S')}"
 
-# Pengaturan Sidebar
-st.sidebar.header("⚙️ Pengaturan")
+# --- MENU PENGATURAN DI SIDEBAR ---
+st.sidebar.header("⚙️ Pengaturan Dinamis")
 bank_name = st.sidebar.text_input("Nama Bank Target", value="Seabank")
 switching_name = st.sidebar.text_input("Nama Pihak/Switching", value="PT. ALTO Network")
 
+# --- KOMPONEN UPLOAD FILE ---
 uploaded_file = st.file_uploader("Pilih file CSV atau Excel", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
     try:
-        # 1. Baca File
+        # 1. Proses Pembacaan File (Mendukung CSV dan Excel)
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
             df = pd.read_excel(uploaded_file)
             
-        st.success("File berhasil dianalisis!")
+        st.success("File berhasil diunggah dan dianalisis secara otomatis!")
 
-        # 2. Pembersihan Data Bawaan
+        # 2. Pembersihan Data Masukan (Data Cleaning)
+        # Menghapus karakter tanda petik satu (') di awal teks jika terbawa dari raw data
         for col in df.columns:
             if df[col].dtype == 'object':
                 df[col] = df[col].astype(str).str.strip("'")
                 
+        # Pembersihan spasi berlebih pada Merchant_Name yang lebih aman untuk Streamlit Cloud
         if 'Merchant_Name' in df.columns:
-            df['Merchant_Name'] = df['Merchant_Name'].str.replace(r'\s+', ' ', regex=True).str.strip()
+            df['Merchant_Name'] = df['Merchant_Name'].astype(str).apply(lambda x: " ".join(x.split()))
 
-        df['Amount_Trx'] = pd.to_numeric(df['Amount_Trx'], errors='coerce')
-        df['Date_Time'] = pd.to_datetime(df['Date_Time'], errors='coerce')
+        # Konversi kolom nominal transaksi dan tanggal ke tipe data numerik & datetime pandas
+        if 'Amount_Trx' in df.columns:
+            df['Amount_Trx'] = pd.to_numeric(df['Amount_Trx'], errors='coerce')
+        if 'Date_Time' in df.columns:
+            df['Date_Time'] = pd.to_datetime(df['Date_Time'], errors='coerce')
 
-        # ================= LOGIKA OTOMATISASI =================
+        # ================= LOGIKA OTOMATISASI DATA FRAUD =================
         
-        # A. Hitung Total Transaksi & Nominal
+        # A. Otomatisasi Hitung Total Nominal & Total Baris Transaksi
         total_trx = len(df)
-        total_amount = int(df['Amount_Trx'].sum())
+        total_amount = int(df['Amount_Trx'].sum()) if 'Amount_Trx' in df.columns else 0
         formatted_amount = f"{total_amount:,}".replace(",", ".")
 
-        # B. Deteksi Waktu Terawal & Terakhir
-        min_date = format_date(df['Date_Time'].min())
-        max_date = format_date(df['Date_Time'].max())
+        # B. Otomatisasi Deteksi Rentang Waktu (Terawal dan Terakhir)
+        min_date = format_date(df['Date_Time'].min()) if 'Date_Time' in df.columns else ""
+        max_date = format_date(df['Date_Time'].max()) if 'Date_Time' in df.columns else ""
 
-        # C. Deteksi Dominasi Nominal vs Pola Unik
-        # Mencari nominal yang paling sering muncul
-        nominal_counts = df['Amount_Trx'].value_counts()
-        if not nominal_counts.empty:
-            top_nominal = nominal_counts.index[0]
-            top_nominal_freq = nominal_counts.iloc[0]
-            
-            # Jika nominal teratas muncul lebih dari 50% dari seluruh transaksi, dianggap dominan
-            if (top_nominal_freq / total_trx) > 0.5:
-                formatted_top_nominal = f"{int(top_nominal):,}".replace(",", ".")
-                indikasi_nominal = f"Transaksi didominasi dengan nominal Rp{formatted_top_nominal}"
+        # C. Otomatisasi Deteksi Dominasi Nominal vs Pola Angka Unik
+        if 'Amount_Trx' in df.columns and not df['Amount_Trx'].empty:
+            nominal_counts = df['Amount_Trx'].value_counts()
+            if not nominal_counts.empty:
+                top_nominal = nominal_counts.index[0]
+                top_nominal_freq = nominal_counts.iloc[0]
+                
+                # Jika nominal yang paling sering muncul mencakup > 50% dari total transaksi
+                if (top_nominal_freq / total_trx) > 0.5:
+                    formatted_top_nominal = f"{int(top_nominal):,}".replace(",", ".")
+                    indikasi_nominal = f"Transaksi didominasi dengan nominal Rp{formatted_top_nominal}"
+                else:
+                    indikasi_nominal = "Transaksi didominasi dengan pola angka unik"
             else:
                 indikasi_nominal = "Transaksi didominasi dengan pola angka unik"
         else:
             indikasi_nominal = "Transaksi didominasi dengan pola angka unik"
 
-        # D. Logika Kondisional CPAN & Merchant
+        # D. Otomatisasi Analisis Hubungan Kondisional CPAN & Merchant (Case a, b, c)
         unique_cpans = df['CPAN_Masking'].nunique() if 'CPAN_Masking' in df.columns else 0
         unique_merchants = df['Merchant_Name'].nunique() if 'Merchant_Name' in df.columns else 0
         
-        # Ambil sampel masker CPAN untuk di text
+        # Penentuan teks display masker kartu utama
         cpan_display = df['CPAN_Masking'].iloc[0] if unique_cpans > 0 else "[CPAN]"
 
         indikasi_cpan_merchant = ""
@@ -80,7 +90,7 @@ if uploaded_file is not None:
             indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada merchant yang sama yaitu {m_name}"
             
         elif unique_cpans == 1 and unique_merchants > 1:
-            # Case b: 1 CPAN ke beberapa Merchant (Maksimal ambil 3)
+            # Case b: 1 CPAN ke beberapa Merchant (Maksimal diambil 3 nama teratas)
             top_merchants = df['Merchant_Name'].value_counts().index[:3].tolist()
             merchants_str = ", ".join(top_merchants)
             indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada beberapa merchant yaitu {merchants_str}"
@@ -92,15 +102,18 @@ if uploaded_file is not None:
             cpan_display = "beberapa CPAN terlampir"
             
         else:
-            # Case Tambahan: Beberapa CPAN ke Beberapa Merchant
-            top_merchants = df['Merchant_Name'].value_counts().index[:3].tolist()
-            merchants_str = ", ".join(top_merchants)
-            indikasi_cpan_merchant = f"Transaksi dilakukan oleh beberapa CPAN pada beberapa merchant di antaranya {merchants_str}"
+            # Case Tambahan: Banyak CPAN ke Banyak Merchant
+            if 'Merchant_Name' in df.columns and unique_merchants > 0:
+                top_merchants = df['Merchant_Name'].value_counts().index[:3].tolist()
+                merchants_str = ", ".join(top_merchants)
+                indikasi_cpan_merchant = f"Transaksi dilakukan oleh beberapa CPAN pada beberapa merchant di antaranya {merchants_str}"
+            else:
+                indikasi_cpan_merchant = "Transaksi dilakukan oleh beberapa CPAN pada beberapa merchant"
             cpan_display = "beberapa CPAN terlampir"
 
-        # ======================================================
+        # =================================================================
 
-        # 3. Susun Teks Email Berdasarkan Hasil Analisis Otomatis
+        # 3. SUSUN TEMPLATE EMAIL DENGAN DATA EKSTRAKSI OTOMATIS
         email_text = f"""Dear Rekan {bank_name},
 
 Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_display}).
@@ -131,10 +144,13 @@ Enterprise, Architecture & Cybersecurity
 Hotline Whatsapp : 0851 7968 1636
 {switching_name}"""
 
-        # 4. Tampilkan di UI Streamlit
+        # --- TAMPILAN OUTPUT UTAMA PADA LAYOUT ---
         st.subheader("📋 Hasil Generate Teks Email")
-        st.text_area("Salin teks di bawah ini:", value=email_text, height=480)
         
+        # Kotak teks besar hasil generate (bisa dicopy langsung lewat tombol bawaan streamlit di pojok kanan teks area)
+        st.text_area("Salin teks hasil otomatisasi di bawah ini:", value=email_text, height=480)
+        
+        # Tombol download file otomatis dalam format txt jika ingin disimpan
         st.download_button(
             label="📥 Download Teks Email (.txt)",
             data=email_text,
@@ -142,12 +158,14 @@ Hotline Whatsapp : 0851 7968 1636
             mime="text/plain"
         )
 
-        # Tampilkan metrik singkat untuk mempermudah cross-check kerjaanmu
-        st.subheader("📊 Metrik Hasil Analisis Otomatis")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Transaksi", f"{total_trx} Trx")
-        col2.metric("Total Nilai", f"Rp {formatted_amount}")
-        col3.metric("Pola Nominal", "Dominan Pecahan" if "nominal" in indikasi_nominal.lower() else "Angka Unik")
+        # Dashboard Metrik Tambahan untuk mempermudah cross-check kerjaan Anda
+        st.subheader("📊 Metrik Ringkasan Pola Data")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Frekuensi Transaksi", f"{total_trx} Kali Trx")
+        col2.metric("Total Kerugian / Nominal", f"Rp {formatted_amount}")
+        col3.metric("Jumlah Unik Kartu (CPAN)", f"{unique_cpans} Card")
+        col4.metric("Jumlah Unik Merchant", f"{unique_merchants} Merchant")
 
     except Exception as e:
-        st.error(f"Terjadi kesalahan pemrosesan logika: {e}")
+        st.error(f"Terjadi kesalahan teknis dalam pemrosesan logika file: {e}")
+        st.info("💡 Tips Cloud: Pastikan nama-nama kolom pada file masukan Anda sudah sesuai seperti 'Date_Time', 'Amount_Trx', 'CPAN_Masking', dan 'Merchant_Name'.")
