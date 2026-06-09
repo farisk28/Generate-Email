@@ -125,9 +125,9 @@ Adapun indikasi yang kami temukan terkait transaksi tersebut :
 5. Transaksi terjadi dalam periode waktu {min_date} - {max_date}
 
 Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:  
-Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ?
-If saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku?
-Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ?
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku?
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?
 
 Mohon dapat menginformasikan kembali hasil pengecekannya, agar kami dapat meningkatkan akurasi pada FDS kami. Jika diperlukan kami juga dapat mendukung terkait kasus fraud yang terkonfirmasi sesuai dengan kewenangan yang diberikan kepada {switching_name}.
 
