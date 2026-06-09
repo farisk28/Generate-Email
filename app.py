@@ -19,7 +19,7 @@ st.sidebar.header("⚙️ Pengaturan Dinamis")
 
 email_mode = st.sidebar.selectbox(
     "Kirim Teks Email Ke:",
-    options=["Deteksi Otomatis", "Issuer (Member)", "Acquirer (Merchant)"]
+    options=["Deteksi Otomatis", "Issuer (Bank)", "Acquirer (Merchant/Payment Gateway)"]
 )
 
 target_name = st.sidebar.text_input("Nama Target (cth: Seabank / Xendit)", value="Seabank")
@@ -32,36 +32,38 @@ if uploaded_file is not None:
         # Membaca data mentah sebagai bytes
         file_bytes = uploaded_file.read()
         
-        # LOGIKA DETEKSI SUPER AMAN: Memeriksa isi jeroan file sesungguhnya
+        # LOGIKA DETEKSI SUPER AMAN (Anti-Crash Format Biner & Teks)
+        is_text_file = False
+        sep = ','
+        
         try:
-            # Mengintip 2000 karakter pertama file
-            text_sample = file_bytes[:2000].decode('utf-8', errors='ignore')
-            
-            # Jika isinya mengandung format teks terpisah atau tag HTML spreadsheet bawaan export sistem
+            # Coba intip 2000 karakter pertama sebagai teks UTF-8
+            text_sample = file_bytes[:2000].decode('utf-8', errors='strict')
+            # Jika berhasil decode tanpa error, periksa tanda pembatas teks (CSV/TSV/HTML)
             if ',' in text_sample or ';' in text_sample or '\t' in text_sample or 'Date_Time' in text_sample or '<table' in text_sample:
-                # Tentukan pemisah otomatis (koma atau titik koma)
+                is_text_file = True
                 sep = ';' if ';' in text_sample and ',' not in text_sample else ','
-                df = pd.read_csv(io.BytesIO(file_bytes), sep=sep)
-            else:
-                # Jika jeroannya biner (Excel asli)
-                if uploaded_file.name.endswith('.csv'):
-                    df = pd.read_csv(io.BytesIO(file_bytes))
-                else:
-                    df = pd.read_excel(io.BytesIO(file_bytes))
-        except Exception:
-            # Cadangan terakhir jika deteksi otomatis gagal
+        except UnicodeDecodeError:
+            # Jika error decode, berarti file tersebut adalah BINER asli (Excel asli .xls/.xlsx)
+            is_text_file = False
+
+        # Proses pembuatan Dataframe berdasarkan hasil deteksi jeroan file
+        if is_text_file:
+            df = pd.read_csv(io.BytesIO(file_bytes), sep=sep)
+        else:
+            # Jalur untuk file Excel Biner asli (.xlsx / .xls asli)
             if uploaded_file.name.endswith('.csv'):
                 df = pd.read_csv(io.BytesIO(file_bytes))
             else:
                 try:
                     df = pd.read_excel(io.BytesIO(file_bytes))
                 except Exception:
-                    # Jika read_excel gagal karena OLE2 (Excel palsu), paksa baca sebagai teks/csv
+                    # Fallback darurat jika excel_read bawaan cloud bermasalah
                     df = pd.read_csv(io.BytesIO(file_bytes), on_bad_lines='skip')
 
         # Memastikan data berhasil dimuat ke tabel
         if df.empty:
-            st.error("File kosong atau tidak dapat dibaca strateginya.")
+            st.error("File kosong atau struktur kolom tidak dapat dibaca.")
             st.stop()
 
         st.success("File Microsoft Excel Workbook berhasil dimuat dan dianalisis!")
@@ -132,10 +134,10 @@ if uploaded_file is not None:
         # =================================================================
 
         # Penentuan mode berdasarkan Dropdown
-        if email_mode == "Issuer (Member)":
+        if email_mode == "Issuer (Bank)":
             is_merchant_case = False
             sumber_pilihan = "Manual (Dropdown)"
-        elif email_mode == "Acquirer (Merchant)":
+        elif email_mode == "Acquirer (Merchant/Payment Gateway)":
             is_merchant_case = True
             sumber_pilihan = "Manual (Dropdown)"
         else:
