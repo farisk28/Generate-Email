@@ -16,7 +16,6 @@ def format_date(dt):
 # --- MENU PENGATURAN DI SIDEBAR ---
 st.sidebar.header("⚙️ Pengaturan Dinamis")
 bank_name = st.sidebar.text_input("Nama Bank Target", value="Seabank")
-switching_name = st.sidebar.text_input("Nama Pihak/Switching", value="PT. ALTO Network")
 
 # --- KOMPONEN UPLOAD FILE ---
 uploaded_file = st.file_uploader("Pilih file CSV atau Excel", type=["csv", "xlsx", "xls"])
@@ -141,7 +140,7 @@ Best Regards,
 Fraud Analyst
 Enterprise, Architecture & Cybersecurity
 Hotline Whatsapp : 0851 7968 1636
-{switching_name}"""
+PT. ALTO Network"""
 
         # --- TAMPILAN OUTPUT UTAMA PADA LAYOUT ---
         st.subheader("📋 Hasil Generate Teks Email")
