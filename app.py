@@ -19,11 +19,11 @@ st.sidebar.header("⚙️ Pengaturan Dinamis")
 # Pilihan Tipe Email Menggunakan Dropdown
 email_mode = st.sidebar.selectbox(
     "Kirim Teks Email Ke:",
-    options=["Deteksi Otomatis", "Issuer (Bank)", "Acquirer (Merchant/Payment Gateway)"]
+    options=["Deteksi Otomatis", "Issuer (Member)", "Acquirer (Merchant)"]
 )
 
 # Input nama target dinamis
-target_name = st.sidebar.text_input("Nama Target (cth: Seabank / Xendit)", value="Seabank")
+target_name = st.sidebar.text_input("Nama Target (contoh: Seabank)", value="Seabank")
 
 # --- KOMPONEN UPLOAD FILE ---
 uploaded_file = st.file_uploader("Pilih file CSV atau Excel", type=["csv", "xlsx", "xls"])
@@ -108,10 +108,10 @@ if uploaded_file is not None:
         # =================================================================
 
         # 3. LOGIKA SELEKSI BERDASARKAN DROPDOWN
-        if email_mode == "Issuer (Bank)":
+        if email_mode == "Issuer (Member)":
             is_merchant_case = False
             sumber_pilihan = "Manual (Dropdown)"
-        elif email_mode == "Acquirer (Merchant/Payment Gateway)":
+        elif email_mode == "Acquirer (Merchant)":
             is_merchant_case = True
             sumber_pilihan = "Manual (Dropdown)"
         else:
