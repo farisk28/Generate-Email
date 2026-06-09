@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# 1. SETTING LAYOUT 
+# 1. SETTING LAYOUT (Menggunakan 'wide' agar pas di browser Streamlit Cloud)
 st.set_page_config(page_title="Email Template Generator - FDS", layout="wide")
 
 st.title("✉️ Smart Email Template Generator - Fraud Analyst")
@@ -19,22 +19,34 @@ st.sidebar.header("⚙️ Pengaturan Dinamis")
 # Pilihan Tipe Email Menggunakan Dropdown
 email_mode = st.sidebar.selectbox(
     "Kirim Teks Email Ke:",
-    options=["Deteksi Otomatis", "Issuer (Member)", "Acquirer (Merchant)"]
+    options=["Deteksi Otomatis", "Issuer (Bank)", "Acquirer (Merchant/Payment Gateway)"]
 )
 
 # Input nama target dinamis
-target_name = st.sidebar.text_input("Nama Target (contoh: Seabank)", value="Seabank")
+target_name = st.sidebar.text_input("Nama Target (cth: Seabank / Xendit)", value="Seabank")
 
 # --- KOMPONEN UPLOAD FILE ---
 uploaded_file = st.file_uploader("Pilih file CSV atau Excel", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
     try:
-        # 1. Proses Pembacaan File (Mendukung CSV dan Excel)
+        # 1. Proses Pembacaan File (Mendukung CSV dan Excel dengan Auto-Fallback)
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            df = pd.read_excel(uploaded_file)
+            try:
+                # Coba baca sebagai Excel terlebih dahulu
+                df = pd.read_excel(uploaded_file)
+            except Exception as excel_err:
+                # Jika error OLE2, kemungkinan ini adalah file CSV yang dinamai .xls/.xlsx
+                if "OLE2 compound document" in str(excel_err) or "Workbook" in str(excel_err):
+                    try:
+                        # Fallback: Coba baca ulang menggunakan read_csv
+                        df = pd.read_csv(uploaded_file)
+                    except Exception as csv_err:
+                        raise excel_err
+                else:
+                    raise excel_err
             
         st.success("File berhasil diunggah dan dianalisis secara otomatis!")
 
@@ -108,10 +120,10 @@ if uploaded_file is not None:
         # =================================================================
 
         # 3. LOGIKA SELEKSI BERDASARKAN DROPDOWN
-        if email_mode == "Issuer (Member)":
+        if email_mode == "Issuer (Bank)":
             is_merchant_case = False
             sumber_pilihan = "Manual (Dropdown)"
-        elif email_mode == "Acquirer (Merchant)":
+        elif email_mode == "Acquirer (Merchant/Payment Gateway)":
             is_merchant_case = True
             sumber_pilihan = "Manual (Dropdown)"
         else:
@@ -121,7 +133,7 @@ if uploaded_file is not None:
 
         # 4. PENYUSUNAN TEMPLATE EMAIL
         if is_merchant_case:
-            # --- TEMPLATE ACQUIRER / MERCHANTS ---
+            # --- TEMPLATE ACQUIRER / MERCHANTS (Contoh: Team Xendit) ---
             email_text = f"""Dear Team {target_name},
 
 Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai penyelenggara infrastruktur pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Merchant {m_name}
@@ -153,7 +165,7 @@ Hotline Whatsapp : 0851 7968 1636
 PT. ALTO Network"""
 
         else:
-            # --- TEMPLATE ISSUER / BANK ---
+            # --- TEMPLATE ISSUER / BANK (Contoh: Rekan Seabank) ---
             email_text = f"""Dear Rekan {target_name},
 
 Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_display}).
@@ -191,7 +203,7 @@ PT. ALTO Network"""
         status_template = "Acquirer (Merchant)" if is_merchant_case else "Issuer (Bank)"
         st.info(f"⚙️ **Mode Aktif:** Menggunakan template **{status_template}** berdasarkan pilihan **{sumber_pilihan}**.")
 
-        # Kotak salin teks teks area
+        # Kotak teks hasil otomatisasi
         st.text_area("Salin teks hasil otomatisasi di bawah ini:", value=email_text, height=480)
         
         # Tombol download file otomatis dalam format txt
@@ -202,7 +214,7 @@ PT. ALTO Network"""
             mime="text/plain"
         )
 
-        # Dashboard Metrik Tambahan
+        # Dashboard Metrik Ringkasan
         st.subheader("📊 Metrik Ringkasan Pola Data")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total Frekuensi Transaksi", f"{total_trx} Kali Trx")
