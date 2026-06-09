@@ -119,11 +119,11 @@ if uploaded_file is not None:
 Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_display}).
 
 Adapun indikasi yang kami temukan terkait transaksi tersebut :
-Total nilai transaksi mencapai Rp{formatted_amount}
-Transaksi dilakukan secara berulang sebanyak {total_trx} kali dalam kurun waktu berdekatan
-{indikasi_nominal}
-{indikasi_cpan_merchant}
-Transaksi terjadi dalam periode waktu {min_date} - {max_date}
+1. Total nilai transaksi mencapai Rp{formatted_amount}
+2. Transaksi dilakukan secara berulang sebanyak {total_trx} kali dalam kurun waktu berdekatan
+3. {indikasi_nominal}
+4. {indikasi_cpan_merchant}
+5. Transaksi terjadi dalam periode waktu {min_date} - {max_date}
 
 Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:  
 Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ?
