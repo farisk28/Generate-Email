@@ -15,8 +15,15 @@ def format_date(dt):
 
 # --- MENU PENGATURAN DI SIDEBAR ---
 st.sidebar.header("⚙️ Pengaturan Dinamis")
-# Input dinamis untuk nama tujuan (Bisa Bank / Acquirer seperti Xendit, dll)
-target_name = st.sidebar.text_input("Nama Target (Bank / Acquirer)", value="Seabank")
+
+# Pilihan Tipe Email Menggunakan Dropdown
+email_mode = st.sidebar.selectbox(
+    "Kirim Teks Email Ke:",
+    options=["Deteksi Otomatis", "Issuer (Bank)", "Acquirer (Merchant/Payment Gateway)"]
+)
+
+# Input nama target dinamis
+target_name = st.sidebar.text_input("Nama Target (cth: Seabank / Xendit)", value="Seabank")
 
 # --- KOMPONEN UPLOAD FILE ---
 uploaded_file = st.file_uploader("Pilih file CSV atau Excel", type=["csv", "xlsx", "xls"])
@@ -78,41 +85,43 @@ if uploaded_file is not None:
         cpan_display = df['CPAN_Masking'].iloc[0] if unique_cpans > 0 else "[CPAN]"
         m_name = df['Merchant_Name'].iloc[0] if unique_merchants > 0 else "[MERCHANT]"
 
-        # Variabel penentu alur / template email
-        is_merchant_case = False
-
         if unique_cpans == 1 and unique_merchants == 1:
-            # Case a: 1 CPAN ke 1 Merchant
             indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada merchant yang sama yaitu {m_name}"
-            is_merchant_case = False
-            
+            auto_merchant_case = False
         elif unique_cpans == 1 and unique_merchants > 1:
-            # Case b: 1 CPAN ke beberapa Merchant
             top_merchants = df['Merchant_Name'].value_counts().index[:3].tolist()
             merchants_str = ", ".join(top_merchants)
             indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada beberapa merchant yaitu {merchants_str}"
-            is_merchant_case = False
-            
+            auto_merchant_case = False
         elif unique_cpans > 1 and unique_merchants == 1:
-            # Case c: Beberapa CPAN ke 1 Merchant (🚨 MASUK KE TEMPLATE ACQUIRER/MERCHANT 🚨)
             indikasi_cpan_merchant = "Transaksi Dilakukan oleh beberapa CPAN ke merchant yang sama secara berulang"
-            is_merchant_case = True
-            
+            auto_merchant_case = True
         else:
-            # Banyak CPAN ke Banyak Merchant
             if 'Merchant_Name' in df.columns and unique_merchants > 0:
                 top_merchants = df['Merchant_Name'].value_counts().index[:3].tolist()
                 merchants_str = ", ".join(top_merchants)
                 indikasi_cpan_merchant = f"Transaksi dilakukan oleh beberapa CPAN pada beberapa merchant di antaranya {merchants_str}"
             else:
                 indikasi_cpan_merchant = "Transaksi dilakukan oleh beberapa CPAN pada beberapa merchant"
-            is_merchant_case = True
+            auto_merchant_case = True
 
         # =================================================================
 
-        # 3. PEMILIHAN TEMPLATE EMAIL SECARA OTOMATIS
+        # 3. LOGIKA SELEKSI BERDASARKAN DROPDOWN
+        if email_mode == "Issuer (Bank)":
+            is_merchant_case = False
+            sumber_pilihan = "Manual (Dropdown)"
+        elif email_mode == "Acquirer (Merchant/Payment Gateway)":
+            is_merchant_case = True
+            sumber_pilihan = "Manual (Dropdown)"
+        else:
+            # Jika memilih "Deteksi Otomatis"
+            is_merchant_case = auto_merchant_case
+            sumber_pilihan = "Sistem (Otomatis)"
+
+        # 4. PENYUSUNAN TEMPLATE EMAIL
         if is_merchant_case:
-            # --- TEMPLATE CASE C (BEBERAPA CPAN KE 1 MERCHANT - CONTOH XENDIT) ---
+            # --- TEMPLATE ACQUIRER / MERCHANTS ---
             email_text = f"""Dear Team {target_name},
 
 Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai penyelenggara infrastruktur pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Merchant {m_name}
@@ -144,7 +153,7 @@ Hotline Whatsapp : 0851 7968 1636
 PT. ALTO Network"""
 
         else:
-            # --- TEMPLATE CASE A & B (1 CPAN KE BANK ISSUER) ---
+            # --- TEMPLATE ISSUER / BANK ---
             email_text = f"""Dear Rekan {target_name},
 
 Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_display}).
@@ -178,14 +187,14 @@ PT. ALTO Network"""
         # --- TAMPILAN OUTPUT UTAMA PADA LAYOUT ---
         st.subheader("📋 Hasil Generate Teks Email")
         
-        # Penanda tipe template yang sedang aktif agar kamu tau jalurnya
-        if is_merchant_case:
-            st.info(f"💡 Jalur Deteksi: **Template Investigasi Merchant (Acquirer)** aktif karena terdeteksi {unique_cpans} CPAN berbeda.")
-        else:
-            st.info(f"💡 Jalur Deteksi: **Template Investigasi Kartu (Issuer)** aktif karena terdeteksi tunggal 1 CPAN.")
+        # Tampilkan status penentuan template di layar browser
+        status_template = "Acquirer (Merchant)" if is_merchant_case else "Issuer (Bank)"
+        st.info(f"⚙️ **Mode Aktif:** Menggunakan template **{status_template}** berdasarkan pilihan **{sumber_pilihan}**.")
 
+        # Kotak salin teks teks area
         st.text_area("Salin teks hasil otomatisasi di bawah ini:", value=email_text, height=480)
         
+        # Tombol download file otomatis dalam format txt
         st.download_button(
             label="📥 Download Teks Email (.txt)",
             data=email_text,
