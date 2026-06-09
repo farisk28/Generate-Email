@@ -128,7 +128,7 @@ Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi perta
 2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku?
 3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?
 
-Mohon dapat menginformasikan kembali hasil pengecekannya, agar kami dapat meningkatkan akurasi pada FDS kami. Jika diperlukan kami juga dapat mendukung terkait kasus fraud yang terkonfirmasi sesuai dengan kewenangan yang diberikan kepada {switching_name}.
+Mohon dapat menginformasikan kembali hasil pengecekannya, agar kami dapat meningkatkan akurasi pada FDS kami. Jika diperlukan kami juga dapat mendukung terkait kasus fraud yang terkonfirmasi sesuai dengan kewenangan yang diberikan kepada PT.ALTO Network.
 
 Note: Password akan kami kirim dengan email terpisah.
 
