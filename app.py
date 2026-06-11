@@ -7,8 +7,8 @@ from templates import TEMPLATES
 # 1. SETTING LAYOUT (Tampilan Penuh)
 st.set_page_config(page_title="Email Template Generator - FDS", layout="wide")
 
-st.title("✉️ Smart Bilingual Email Template Generator - PT. ALTO Network")
-st.write("Unggah data transaksi FDS untuk mengekstrak indikasi fraud dan membuat email secara otomatis.")
+st.title("✉️ Email Template Generator")
+st.write("Unggah data transaksi FDS untuk mengekstrak indikasi fraud dan membuat email secara otomatis. (Dalam bentuk CSV atau Excel)")
 
 # Fungsi pembantu format tanggal
 def format_date(dt):
@@ -29,21 +29,21 @@ email_lang = st.sidebar.selectbox(
 chosen_case = st.sidebar.selectbox(
     "Pilih Jenis Case Investigasi:",
     options=[
-        "Case 1: DRAFT EMAIL UNTUK ACQUIRER/MERCHANT",
-        "Case 2: MERCHANT KENAIKAN TPV RC 107 / RC 59",
-        "Case 3: MERCHANT LEBIH DARI 1",
-        "Case 4: ACQUIRER QRCB INBOUND",
-        "Case 5: NAMA MERCHANT ANOMALI — ACQUIRER",
-        "Case 5-Issuer: NAMA MERCHANT ANOMALI — ISSUER",
-        "Case 6: QRCB AS ACQUIRER OUTBOUND",
-        "Case 7: ISSUER/CUSTOMER QRCB",
-        "Case 8: ISSUER LEBIH DARI 1 CPAN",
-        "Case 9: DRAFT EMAIL UNTUK ISSUER (Standard)",
-        "Case 10: ISSUER PROCODE 263000"
+        "Case 1: EMAIL ACQUIRER/MERCHANT, Produk QR",
+        "Case 2: EMAIL MERCHANT KENAIKAN TPV RC 107 / RC 59, Produk QR",
+        "Case 3: EMAIL MERCHANT LEBIH DARI 1, Produk QR",
+        "Case 4: EMAIL ACQUIRER QRCB INBOUND, Produk QR CB",
+        "Case 5: EMAIL NAMA MERCHANT ANOMALI (Acquirer), Produk QR",
+        "Case 5: EMAIL NAMA MERCHANT ANOMALI  (Issuer), Produk QR",
+        "Case 6: EMAIL ACQUIRER QRCB OUTBOUND, Produk QR CB",
+        "Case 7: EMAIL ISSUER/CUSTOMER QRCB, Produk QR CB",
+        "Case 8: EMAIL ISSUER LEBIH DARI 1, Produk QR",
+        "Case 9: EMAIL ISSUER/CUSTOMER, Produk QR",
+        "Case 10: EMAIL ISSUER PROCODE 263000, Produk QR"
     ]
 )
 
-target_name = st.sidebar.text_input("Nama Instansi Target (cth: NOBU / DANA / BCA / ShopeePay / Bank Jago)", value="NOBU")
+target_name = st.sidebar.text_input("Nama Instansi Target (cth: NOBU / DANA / BCA / ShopeePay / Bank Jago)", value="DANA")
 
 # --- KOMPONEN UPLOAD FILE ---
 uploaded_file = st.file_uploader("Pilih file data transaksi (CSV atau Excel Workbook)", type=["csv", "xlsx", "xls"])
