@@ -1,81 +1,90 @@
 import streamlit as st
 import pandas as pd
 import io
+import re
+from templates import TEMPLATES
 
 # 1. SETTING LAYOUT (Tampilan Penuh)
 st.set_page_config(page_title="Email Template Generator - FDS", layout="wide")
 
-st.title("✉️ Smart Email Template Generator - Fraud Analyst")
-st.write("Unggah file CSV/Excel untuk menganalisis pola fraud dan membuat draf email FDS secara otomatis.")
+st.title("✉️ Smart Bilingual Email Template Generator - PT. ALTO Network")
+st.write("Unggah data transaksi FDS untuk mengekstrak indikasi fraud dan membuat email secara otomatis.")
 
-# Fungsi pembantu untuk format tanggal yang aman di server Cloud
+# Fungsi pembantu format tanggal
 def format_date(dt):
     if pd.isnull(dt):
         return ""
     return f"{dt.month}/{dt.day}/{dt.year} {dt.strftime('%H:%M:%S')}"
 
-# --- MENU PENGATURAN DI SIDEBAR ---
-st.sidebar.header("⚙️ Pengaturan Dinamis")
+# --- MENU DROPDOWN DI SIDEBAR ---
+st.sidebar.header("⚙️ Pengaturan Global")
 
-email_mode = st.sidebar.selectbox(
-    "Kirim Teks Email Ke:",
-    options=["Deteksi Otomatis", "Issuer (Member)", "Acquirer (Merchant)"]
+# Pilihan Bahasa Global (Mempengaruhi seluruh isi email)
+email_lang = st.sidebar.selectbox(
+    "Pilih Bahasa Email (Global Language):",
+    options=["Bahasa Indonesia", "English"]
 )
 
-target_name = st.sidebar.text_input("Nama Target (cth: Seabank / Xendit)", value="Seabank")
+# Pilihan Kasus Router (Case 1 s.d Case 10)
+chosen_case = st.sidebar.selectbox(
+    "Pilih Jenis Case Investigasi:",
+    options=[
+        "Case 1: DRAFT EMAIL UNTUK ACQUIRER/MERCHANT",
+        "Case 2: MERCHANT KENAIKAN TPV RC 107 / RC 59",
+        "Case 3: MERCHANT LEBIH DARI 1",
+        "Case 4: ACQUIRER QRCB INBOUND",
+        "Case 5: NAMA MERCHANT ANOMALI — ACQUIRER",
+        "Case 5-Issuer: NAMA MERCHANT ANOMALI — ISSUER",
+        "Case 6: QRCB AS ACQUIRER OUTBOUND",
+        "Case 7: ISSUER/CUSTOMER QRCB",
+        "Case 8: ISSUER LEBIH DARI 1 CPAN",
+        "Case 9: DRAFT EMAIL UNTUK ISSUER (Standard)",
+        "Case 10: ISSUER PROCODE 263000"
+    ]
+)
+
+target_name = st.sidebar.text_input("Nama Instansi Target (cth: NOBU / DANA / BCA / ShopeePay / Bank Jago)", value="NOBU")
 
 # --- KOMPONEN UPLOAD FILE ---
-uploaded_file = st.file_uploader("Pilih file CSV atau Excel", type=["csv", "xlsx", "xls"])
+uploaded_file = st.file_uploader("Pilih file data transaksi (CSV atau Excel Workbook)", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
     try:
-        # Membaca data mentah sebagai biner murni (bytes)
         file_bytes = uploaded_file.read()
         
-        # JALUR 1: Jika ekstensi file adalah .csv, langsung baca sebagai CSV
+        # Penanganan Pembacaan File Pintar (Anti-Crash Biner & Teks)
         if uploaded_file.name.endswith('.csv'):
             try:
                 df = pd.read_csv(io.BytesIO(file_bytes), sep=',')
             except Exception:
                 df = pd.read_csv(io.BytesIO(file_bytes), sep=';')
-        
-        # JALUR 2: Jika ekstensi file adalah Excel (.xlsx atau .xls)
         else:
             try:
-                # Coba baca sebagai Excel Workbook asli dulu
                 df = pd.read_excel(io.BytesIO(file_bytes))
             except Exception as excel_err:
-                # JALUR PENYELAMAT: Jika read_excel gagal (misal karena OLE2 / Excel Palsu), 
-                # paksa baca menggunakan read_csv karena seringkali itu adalah file teks terpisah
                 try:
                     df = pd.read_csv(io.BytesIO(file_bytes), sep=',')
                 except Exception:
-                    try:
-                        df = pd.read_csv(io.BytesIO(file_bytes), sep=';')
-                    except Exception:
-                        # Jika semua cara gagal, lempar error asli Excel
-                        raise excel_err
+                    df = pd.read_csv(io.BytesIO(file_bytes), sep=';')
 
-        # Memastikan data tidak kosong
         if df.empty:
-            st.error("File berhasil dibaca, namun tidak ditemukan baris data di dalamnya.")
+            st.error("File tidak memiliki baris data.")
             st.stop()
 
         st.success("File data transaksi berhasil dimuat dan dianalisis!")
 
-        # 2. Pembersihan Data Masukan (Data Cleaning)
+        # 2. Pembersihan Data Masukan
         for col in df.columns:
             df[col] = df[col].astype(str).str.strip("'").str.strip()
                 
         if 'Merchant_Name' in df.columns:
             df['Merchant_Name'] = df['Merchant_Name'].apply(lambda x: " ".join(x.split()))
-
         if 'Amount_Trx' in df.columns:
             df['Amount_Trx'] = pd.to_numeric(df['Amount_Trx'], errors='coerce')
         if 'Date_Time' in df.columns:
             df['Date_Time'] = pd.to_datetime(df['Date_Time'], errors='coerce')
 
-        # ================= LOGIKA OTOMATISASI DATA FRAUD =================
+        # ================= LOGIKA MATRIKS ATURAN (RULE-BASED REASONING) =================
         
         total_trx = len(df)
         total_amount = int(df['Amount_Trx'].sum()) if 'Amount_Trx' in df.columns else 0
@@ -84,146 +93,212 @@ if uploaded_file is not None:
         min_date = format_date(df['Date_Time'].min()) if 'Date_Time' in df.columns else ""
         max_date = format_date(df['Date_Time'].max()) if 'Date_Time' in df.columns else ""
 
+        # A. Pengkondisian Deteksi Nominal & Pola Keriting vs Unik
+        is_keriting = False
+        formatted_top_nominal = "0"
+        
         if 'Amount_Trx' in df.columns and not df['Amount_Trx'].empty:
             nominal_counts = df['Amount_Trx'].value_counts()
             if not nominal_counts.empty:
                 top_nominal = nominal_counts.index[0]
+                formatted_top_nominal = f"{int(top_nominal):,}".replace(",", ".")
                 top_nominal_freq = nominal_counts.iloc[0]
                 
-                if (top_nominal_freq / total_trx) > 0.5:
-                    formatted_top_nominal = f"{int(top_nominal):,}".replace(",", ".")
-                    indikasi_nominal = f"Transaksi didominasi dengan nominal Rp{formatted_top_nominal}"
+                top_nominal_str = str(int(top_nominal))
+                is_keriting = bool(re.search(r'(\d)\1\1', top_nominal_str))
+                
+                # Cek Pola Kelompok Nominal (Sama / Keriting / Unik)
+                if email_lang == "Bahasa Indonesia":
+                    if is_keriting and (top_nominal_freq / total_trx) > 0.4:
+                        indikasi_nominal = "Transaksi didominasi dengan pola angka keriting"
+                    elif (top_nominal_freq / total_trx) > 0.6:
+                        indikasi_nominal = "Transaksi dilakukan dengan nominal yang sama"
+                    else:
+                        # Pola Unik Berdasarkan Range Digit Jutaan
+                        sample_amount = str(int(top_nominal))
+                        if len(sample_amount) >= 7:
+                            indikasi_nominal = f"Transaksi didominasi dengan nominal yang besar dan unik yaitu Rp {sample_amount[0]},{sample_amount[1:3]}xx,xxx"
+                        else:
+                            indikasi_nominal = "Transaksi didominasi dengan nominal yang unik"
                 else:
-                    indikasi_nominal = "Transaksi didominasi dengan pola angka unik"
-            else:
-                indikasi_nominal = "Transaksi didominasi dengan pola angka unik"
+                    # English Term
+                    if is_keriting and (top_nominal_freq / total_trx) > 0.4:
+                        indikasi_nominal = "Transactions are dominated by repetitive/patterned numbers (angka keriting)"
+                    elif (top_nominal_freq / total_trx) > 0.6:
+                        indikasi_nominal = "Transactions were conducted with the same nominal value"
+                    else:
+                        sample_amount = str(int(top_nominal))
+                        if len(sample_amount) >= 7:
+                            indikasi_nominal = f"The transactions are dominated by the similar nominal value IDR {sample_amount[0]},{sample_amount[1:3]}xx,xxx"
+                        else:
+                            indikasi_nominal = "Transactions are dominated by unique/random nominal values"
         else:
-            indikasi_nominal = "Transaksi didominasi dengan pola angka unik"
+            indikasi_nominal = ""
 
+        # B. Deteksi Unik CPAN, MPAN & Nama Merchant
         unique_cpans = df['CPAN_Masking'].nunique() if 'CPAN_Masking' in df.columns else 0
         unique_merchants = df['Merchant_Name'].nunique() if 'Merchant_Name' in df.columns else 0
         
         cpan_display = df['CPAN_Masking'].iloc[0] if unique_cpans > 0 else "[CPAN]"
+        mpan_display = df['MPAN_Masking'].iloc[0] if 'MPAN_Masking' in df.columns and len(df) > 0 else "[MPAN]"
         m_name = df['Merchant_Name'].iloc[0] if unique_merchants > 0 else "[MERCHANT]"
 
-        if unique_cpans == 1 and unique_merchants == 1:
-            indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada merchant yang sama yaitu {m_name}"
-            auto_merchant_case = False
-        elif unique_cpans == 1 and unique_merchants > 1:
-            top_merchants = df['Merchant_Name'].value_counts().index[:3].tolist()
-            merchants_str = ", ".join(top_merchants)
-            indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada beberapa merchant yaitu {merchants_str}"
-            auto_merchant_case = False
-        elif unique_cpans > 1 and unique_merchants == 1:
-            indikasi_cpan_merchant = "Transaksi Dilakukan oleh beberapa CPAN ke merchant yang sama secara berulang"
-            auto_merchant_case = True
+        # Menggabungkan nomor kartu CPAN jika ada lebih dari 1 untuk draf text
+        if 'CPAN_Masking' in df.columns:
+            cpans_list = df['CPAN_Masking'].unique().tolist()
+            cpan_list_string = ", ".join(cpans_list)
         else:
-            if 'Merchant_Name' in df.columns and unique_merchants > 0:
-                top_merchants = df['Merchant_Name'].value_counts().index[:3].tolist()
-                merchants_str = ", ".join(top_merchants)
-                indikasi_cpan_merchant = f"Transaksi dilakukan oleh several CPAN pada beberapa merchant di antaranya {merchants_str}"
+            cpan_list_string = cpan_display
+
+        # String Kondisi Kenaikan TPV atau Multi-Card
+        if email_lang == "Bahasa Indonesia":
+            cpan_count_string = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} CPAN berbeda"
+            if unique_cpans == 1 and unique_merchants == 1:
+                indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada 1 Merchant yang sama yaitu {m_name}"
+            elif unique_cpans == 1 and unique_merchants > 1:
+                indikasi_cpan_merchant = "Transaksi dilakukan oleh 1 CPAN pada berbagai merchant berbeda-beda"
             else:
-                indikasi_cpan_merchant = "Transaksi dilakukan oleh beberapa CPAN pada beberapa merchant"
-            auto_merchant_case = True
-
-        # =================================================================
-
-        # Penentuan mode berdasarkan Dropdown
-        if email_mode == "Issuer (Member)":
-            is_merchant_case = False
-            sumber_pilihan = "Manual (Dropdown)"
-        elif email_mode == "Acquirer (Merchant)":
-            is_merchant_case = True
-            sumber_pilihan = "Manual (Dropdown)"
+                indikasi_cpan_merchant = "Transaksi dilakukan secara berulang oleh beberapa CPAN pada merchant yang sama"
         else:
-            is_merchant_case = auto_merchant_case
-            sumber_pilihan = "Sistem (Otomatis)"
+            # English
+            cpan_count_string_en = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} different CPANs"
+            if unique_cpans == 1 and unique_merchants == 1:
+                indikasi_cpan_merchant = f"Transactions were performed by 1 CPAN at the same 1 Merchant"
+            elif unique_cpans == 1 and unique_merchants > 1:
+                indikasi_cpan_merchant = "Transactions were performed by 1 CPAN at various different merchants"
+            else:
+                indikasi_cpan_merchant = "Repeated transactions conducted by the same CPANs at the same merchant"
 
-        # Pemilihan struktur template draf email
-        if is_merchant_case:
-            # --- TEMPLATE ACQUIRER / MERCHANTS ---
-            email_text = f"""Dear Team {target_name},
-
-Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai penyelenggara infrastruktur pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Merchant {m_name}
- 
-Adapun indikasi yang kami temukan terkait transaksi tersebut :
-1. Total nilai transaksi mencapai Rp{formatted_amount}
-2. Transaksi dilakukan secara berulang sebanyak {total_trx} kali dalam kurun waktu berdekatan
-3. {indikasi_cpan_merchant}
-4. Transaksi terjadi dalam periode waktu {min_date} - {max_date}
-
-Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:
-1. Apakah dari sisi merchant terdapat indikasi abuse?
-2. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir?
-3. Apakah profil merchant sesuai dengan pola transaksinya?
-4. Jika transaksi di merchant tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.
- 
-Password akan kami kirim dengan email terpisah. 
-Jika ada pertanyaan lebih lanjut tentang terkait case ini.
-Jangan ragu jika ingin menghubungi kami melalui email ini atau bisa menghubungi nomor operasional kami: 0851 7968 1636
-
-Demikian yang dapat kami sampaikan,
-atas perhatiannya kami ucapkan terima kasih
- 
-Simple Payment, Redefined.
-Best Regards,
-Fraud Analyst
-Enterprise, Architecture & Cybersecurity
-Hotline Whatsapp : 0851 7968 1636
-PT. ALTO Network"""
-
+        # Logika Gabungan Nama Merchant Banyak (Case 3)
+        if unique_merchants > 1:
+            all_merchants = df['Merchant_Name'].unique().tolist()
+            if len(all_merchants) > 1:
+                merchant_list_string = " dan ".join([", ".join(all_merchants[:-1]), all_merchants[-1]])
+            else:
+                merchant_list_string = all_merchants[0]
         else:
-            # --- TEMPLATE ISSUER / MEMBER ---
-            email_text = f"""Dear Rekan {target_name},
+            merchant_list_string = m_name
 
-Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_display}).
+        # D. Deteksi Limit Akumulasi Nominal Per-CPAN (> 50 Juta)
+        indikasi_limit_cpan = ""
+        if 'CPAN_Masking' in df.columns and 'Amount_Trx' in df.columns:
+            cpan_grp = df.groupby('CPAN_Masking')['Amount_Trx'].sum()
+            over_limit_count = len(cpan_grp[cpan_grp > 50000000])
+            if over_limit_count > 0:
+                if email_lang == "Bahasa Indonesia":
+                    indikasi_limit_cpan = f"1 CPAN melakukan transaksi dengan total > Rp 50 Juta" if unique_cpans == 1 else f"Terdapat CPAN yang melakukan transaksi dengan akumulasi > Rp 50 Juta"
+                else:
+                    indikasi_limit_cpan = f"1 CPAN performed transactions with total > IDR 50 Million"
+            else:
+                if email_lang == "Bahasa Indonesia":
+                    indikasi_limit_cpan = f"1 CPAN melakukan transaksi dengan total nilai Rp {formatted_amount}" if unique_cpans == 1 else f"Total keseluruhan transaksi adalah Rp {formatted_amount}"
+                else:
+                    indikasi_limit_cpan = f"1 CPAN conducted transactions with total value IDR {formatted_amount}" if unique_cpans == 1 else f"Total overall transaction value is IDR {formatted_amount}"
 
-Adapun indikasi yang kami temukan terkait transaksi tersebut :
-1. Total nilai transaksi mencapai Rp{formatted_amount}
-2. Transaksi dilakukan secara berulang sebanyak {total_trx} kali dalam kurun waktu berdekatan
-3. {indikasi_nominal}
-4. {indikasi_cpan_merchant}
-5. Transaksi terjadi dalam periode waktu {min_date} - {max_date}
+        # E. Deteksi Otomatis Response Code & Processing Code (RC 61, RC 107, Procode 263000)
+        rc_61_count = 0
+        rc_107_count = 0
+        procode_263000_found = False
+        
+        if 'Response_Code' in df.columns:
+            rc_61_count = len(df[df['Response_Code'].isin(['61', "'61'", 'RC 61'])])
+            rc_107_count = len(df[df['Response_Code'].isin(['107', "'107'", 'RC 107'])])
+        if 'Procode' in df.columns:
+            procode_263000_found = any(df['Procode'].astype(str).str.contains('263000'))
 
-Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:  
-1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ?
-2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku?
-3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?
+        # Teks Status Decline
+        if email_lang == "Bahasa Indonesia":
+            if rc_61_count > 0:
+                indikasi_decline = "Terdapat transaksi yang mendapatkan Response Code 61"
+            elif rc_107_count > 0:
+                indikasi_decline = "Terdapat transaksi yang mendapatkan Response Code 107"
+            else:
+                indikasi_decline = "Transaksi secara berulang dalam kurun waktu yang berdekatan"
+        else:
+            if rc_61_count > 0:
+                indikasi_decline = "There are transactions that received Response Code 61"
+            elif rc_107_count > 0:
+                indikasi_decline = "There are transactions that received Response Code 107"
+            else:
+                indikasi_decline = "Repeated transactions occurred within a short time interval"
 
-Mohon dapat menginformasikan kembali hasil pengecekannya, agar kami dapat meningkatkan akurasi pada FDS kami. Jika diperlukan kami juga dapat mendukung terkait kasus fraud yang terkonfirmasi sesuai dengan kewenangan yang diberikan kepada PT. ALTO Network.
+        # Teks Status Procode
+        if email_lang == "Bahasa Indonesia":
+            indikasi_procode = "Transaksi dilakukan dengan Processing Code 263000" if procode_263000_found else ""
+        else:
+            indikasi_procode = "Transactions were conducted using Processing Code 263000" if procode_263000_found else ""
 
-Note: Password akan kami kirim dengan email terpisah.
+        # =================================================================================
 
-Demikian yang dapat kami sampaikan,
-atas perhatiannya kami ucapkan terima kasih
- 
-Simple Payment, Redefined.
-Best Regards,
-Fraud Analyst
-Enterprise, Architecture & Cybersecurity
-Hotline Whatsapp : 0851 7968 1636
-PT. ALTO Network"""
+        # 3. MAPPING KUNCI KASUS BERDASARKAN PILIHAN USER
+        if chosen_case.startswith("Case 1:"):
+            case_key = "case1"
+        elif chosen_case.startswith("Case 2:"):
+            case_key = "case2"
+        elif chosen_case.startswith("Case 3:"):
+            case_key = "case3"
+        elif chosen_case.startswith("Case 4:"):
+            case_key = "case4"
+        elif chosen_case.startswith("Case 5:"):
+            case_key = "case5"
+        elif chosen_case.startswith("Case 5-Issuer:"):
+            case_key = "case5_issuer"
+        elif chosen_case.startswith("Case 6:"):
+            case_key = "case6"
+        elif chosen_case.startswith("Case 7:"):
+            case_key = "case7"
+        elif chosen_case.startswith("Case 8:"):
+            case_key = "case8"
+        elif chosen_case.startswith("Case 9:"):
+            case_key = "case9"
+        else:
+            case_key = "case10"
+
+        # Gabungkan kode kasus dengan kode bahasa (_id atau _en)
+        final_key = f"{case_key}_id" if email_lang == "Bahasa Indonesia" else f"{case_key}_en"
+
+        # Memuat master draf teks dari templates.py
+        template_raw = TEMPLATES[final_key]
+        email_text = template_raw.format(
+            target_name=target_name,
+            formatted_amount=formatted_amount,
+            formatted_top_nominal=formatted_top_nominal,
+            total_trx=total_trx,
+            min_date=min_date,
+            max_date=max_date,
+            m_name=m_name,
+            cpan_display=cpan_display,
+            mpan_display=mpan_display,
+            cpan_list_string=cpan_list_string,
+            merchant_list_string=merchant_list_string,
+            indikasi_nominal=indikasi_nominal,
+            indikasi_cpan_merchant=indikasi_cpan_merchant,
+            indikasi_decline=indikasi_decline,
+            indikasi_procode=indikasi_procode,
+            indikasi_limit_cpan=indikasi_limit_cpan,
+            cpan_count_string=cpan_count_string if 'cpan_count_string' in locals() else "",
+            cpan_count_string_en=cpan_count_string_en if 'cpan_count_string_en' in locals() else ""
+        )
 
         # --- TAMPILAN OUTPUT UTAMA ---
-        st.subheader("📋 Hasil Generate Teks Email")
-        status_template = "Acquirer (Merchant)" if is_merchant_case else "Issuer (Bank)"
-        st.info(f"⚙️ **Mode Aktif:** Menggunakan template **{status_template}** berdasarkan pilihan **{sumber_pilihan}**.")
-
-        st.text_area("Salin teks hasil otomatisasi di bawah ini:", value=email_text, height=480)
+        st.subheader("📋 Hasil Ekstraksi Draf Teks Email")
+        st.info(f"🌐 **Bahasa Aktif:** {email_lang} | **Target Router Aturan:** `{final_key}`")
+        st.text_area("Salin teks hasil otomatisasi di bawah ini:", value=email_text, height=500)
         
         st.download_button(
             label="📥 Download Teks Email (.txt)",
             data=email_text,
-            file_name=f"Email_Fraud_{target_name}.txt",
+            file_name=f"Draf_FDS_{target_name}_{email_lang[:2].lower()}.txt",
             mime="text/plain"
         )
 
-        st.subheader("📊 Metrik Ringkasan Pola Data")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Frekuensi Transaksi", f"{total_trx} Kali Trx")
-        col2.metric("Total Nominal Terhitung", f"Rp {formatted_amount}")
-        col3.metric("Jumlah Unik Kartu (CPAN)", f"{unique_cpans} Card")
-        col4.metric("Jumlah Unik Merchant", f"{unique_merchants} Merchant")
+        # Dashboard Summary Mini
+        st.subheader("📊 Analitik Ringkasan Data Pendukung")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Frekuensi Transaksi", f"{total_trx} Trx")
+        c2.metric("Total Nominal Terhitung", f"Rp {formatted_amount}")
+        c3.metric("Jumlah Unik CPAN", f"{unique_cpans}")
+        c4.metric("Status Procode 263000", "Terdeteksi (🚨)" if procode_263000_found else "Tidak Ada")
 
     except Exception as e:
-        st.error(f"Terjadi kesalahan teknis dalam pemrosesan logika file: {e}")
+        st.error(f"Terjadi kesalahan teknis pemrosesan: {e}")
