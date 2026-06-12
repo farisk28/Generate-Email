@@ -322,5 +322,13 @@ if uploaded_file is not None:
             file_name=f"Draf_FDS_{target_name}_{actual_lang[:2].lower()}.txt", mime="text/plain"
         )
 
+        # --- SUMMARY ANALYTICS ---
+        st.subheader("📊 Analitik Ringkasan Data Pendukung")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Frekuensi Transaksi", f"{total_trx} Trx")
+        c2.metric("Total Nominal Terhitung", f"Rp {formatted_amount}")
+        c3.metric("Jumlah Unik CPAN/Sender", f"{unique_cpans if unique_cpans > 0 else 1}")
+        c4.metric("Deteksi RC Bermasalah", f"RC59: {rc_59_count} | RC57: {rc_57_count} | RC96: {rc_96_count}")
+
     except Exception as e:
         st.error(f"Terjadi kesalahan teknis pemrosesan: {e}")
