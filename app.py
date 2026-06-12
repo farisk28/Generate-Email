@@ -7,7 +7,7 @@ from templates import TEMPLATES
 # 1. SETTING LAYOUT (Tampilan Penuh)
 st.set_page_config(page_title="Email Template Generator - FDS", layout="wide")
 
-st.title("✉️ Email Template Generator")
+st.title("✉️ Email Template Generator - FDS ALTO")
 st.write("Unggah data transaksi FDS untuk mengekstrak indikasi fraud dan membuat email secara otomatis. (Dalam bentuk CSV atau Excel)")
 
 # Fungsi pembantu format tanggal
@@ -16,42 +16,41 @@ def format_date(dt):
         return ""
     return f"{dt.month}/{dt.day}/{dt.year} {dt.strftime('%H:%M:%S')}"
 
-# --- DATABASE KATEGORI PRODUK & FORMAT CASE LENGKAP ---
+# --- DATABASE KATEGORI PRODUK & FORMAT CASE LENGKAP (TANPA NOMOR & CASE 2 DIHAPUS) ---
 PRODUCT_CASES = {
     "QR Domestik": [
-        "Case 1: EMAIL ACQUIRER/MERCHANT, Produk QR",
-        "Case 2: EMAIL MERCHANT KENAIKAN TPV RC 107 / RC 59, Produk QR",
-        "Case 3: EMAIL MERCHANT LEBIH DARI 1, Produk QR",
-        "Case 5: EMAIL NAMA MERCHANT ANOMALI (Acquirer), Produk QR",
-        "Case 5: EMAIL NAMA MERCHANT ANOMALI  (Issuer), Produk QR",
-        "Case 8: EMAIL ISSUER LEBIH DARI 1, Produk QR",
-        "Case 9: EMAIL ISSUER/CUSTOMER, Produk QR",
-        "Case 10: EMAIL ISSUER PROCODE 263000, Produk QR",
-        "Case 11: EMAIL ISSUER SUSPECT RC 59, Produk QR",
-        "Case 13: EMAIL ISSUER KENAIKAN MERCHANT RC 107, Produk QR",
-        "Case 14: EMAIL ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR",
-        "Case 15: EMAIL ISSUER QR DOM APPROVE > 50 KALI, Produk QR"
+        "EMAIL ACQUIRER/MERCHANT, Produk QR",
+        "EMAIL MERCHANT LEBIH DARI 1, Produk QR",
+        "EMAIL NAMA MERCHANT ANOMALI (Acquirer), Produk QR",
+        "EMAIL NAMA MERCHANT ANOMALI (Issuer), Produk QR",
+        "EMAIL ISSUER LEBIH DARI 1 CPAN, Produk QR",
+        "EMAIL ISSUER/CUSTOMER, Produk QR",
+        "EMAIL ISSUER PROCODE 263000, Produk QR",
+        "EMAIL ISSUER SUSPECT RC 59, Produk QR",
+        "EMAIL ISSUER KENAIKAN MERCHANT RC 107, Produk QR",
+        "EMAIL ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR",
+        "EMAIL ISSUER QR DOM APPROVE > 50 KALI, Produk QR"
     ],
     "QR Cross Border (QRCB)": [
-        "Case 4: EMAIL ACQUIRER QRCB INBOUND, Produk QR CB",
-        "Case 6: EMAIL ACQUIRER QRCB OUTBOUND, Produk QR CB",
-        "Case 7: EMAIL ISSUER/CUSTOMER QRCB, Produk QR CB",
-        "Case 12: EMAIL ISSUER QRCB OUTBOUND, Produk QR CB"
+        "EMAIL ACQUIRER QRCB INBOUND, Produk QR CB",
+        "EMAIL ACQUIRER QRCB OUTBOUND, Produk QR CB",
+        "EMAIL ISSUER/CUSTOMER QRCB, Produk QR CB",
+        "EMAIL ISSUER QRCB OUTBOUND, Produk QR CB"
     ],
     "Disbursement": [
-        "Case 16: EMAIL DISBURSEMENT SENDER, Produk Disbursement",
-        "Case 17: EMAIL DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary",
-        "Case 18: EMAIL DISBURSEMENT SENDER CV/PT, Produk Disbursement",
-        "Case 19: EMAIL BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement"
+        "EMAIL DISBURSEMENT SENDER, Produk Disbursement",
+        "EMAIL DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary",
+        "EMAIL DISBURSEMENT SENDER CV/PT, Produk Disbursement",
+        "EMAIL BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement"
     ],
     "QR Transfer": [
-        "Case 20: EMAIL QR TRANSFER BENEFICIARY, Produk QR Transfer",
-        "Case 21: EMAIL QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer"
+        "EMAIL QR TRANSFER BENEFICIARY, Produk QR Transfer",
+        "EMAIL QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer"
     ],
     "ATM": [
-        "Case 22: EMAIL ATM BEDA KOTA, Produk ATM",
-        "Case 23: EMAIL ATM TRANSFER SENDER, Produk ATM",
-        "Case 24: EMAIL ATM WITHDRAWAL, Produk ATM withdrawal"
+        "EMAIL ATM BEDA KOTA, Produk ATM",
+        "EMAIL ATM TRANSFER SENDER, Produk ATM",
+        "EMAIL ATM WITHDRAWAL, Produk ATM withdrawal"
     ]
 }
 
@@ -74,7 +73,8 @@ chosen_case = st.sidebar.selectbox(
 if selected_product == "QR Cross Border (QRCB)":
     actual_lang = st.sidebar.selectbox(
         "Pilih Bahasa Email (Khusus Produk QRCB):",
-        options=["Bahasa Indonesia", "English"]
+        options=["Bahasa Indonesia", "English"],
+        help="Gunakan English untuk partner internasional, dan Bahasa Indonesia untuk partner lokal."
     )
 else:
     actual_lang = "Bahasa Indonesia"
@@ -182,7 +182,10 @@ if uploaded_file is not None:
 
         if actual_lang == "Bahasa Indonesia":
             cpan_count_string = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} CPAN berbeda"
-            indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN yang sama pada 1 Benef PAN" if "Case 21:" in chosen_case else (f"Transaksi dilakukan oleh 1 CPAN pada 1 Merchant yang sama yaitu {m_name}" if unique_cpans == 1 else "Transaksi dilakukan oleh CPAN yang sama pada merchant yang berbeda")
+            if "QR TRANSFER 1 SENDER 1 BENEFICIARY" in chosen_case:
+                indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN yang sama pada 1 Benef PAN"
+            else:
+                indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada 1 Merchant yang sama yaitu {m_name}" if unique_cpans == 1 else "Transaksi dilakukan oleh CPAN yang sama pada merchant yang berbeda"
         else:
             cpan_count_string_en = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} different CPANs"
             indikasi_cpan_merchant = "Repeated transactions conducted by the same CPANs at the same merchant"
@@ -226,23 +229,36 @@ if uploaded_file is not None:
 
         # =================================================================================
 
-        # 3. INTERPRETER KUNCI KASUS (1 s.d 24 Router)
+        # 3. INTERPRETER KUNCI KASUS (Mapping Exact String ke Template Key)
         case_map = {
-            "Case 1:": "case1", "Case 2:": "case2", "Case 3:": "case3", "Case 4:": "case4",
-            "Case 5: EMAIL NAMA MERCHANT ANOMALI (Acquirer)": "case5",
-            "Case 5: EMAIL NAMA MERCHANT ANOMALI  (Issuer)": "case5_issuer",
-            "Case 6:": "case6", "Case 7:": "case7", "Case 8:": "case8", "Case 9:": "case9",
-            "Case 10:": "case10", "Case 11:": "case11", "Case 12:": "case12", "Case 13:": "case13",
-            "Case 14:": "case14", "Case 15:": "case15", "Case 16:": "case16", "Case 17:": "case17",
-            "Case 18:": "case18", "Case 19:": "case19", "Case 20:": "case20", "Case 21:": "case21",
-            "Case 22:": "case22", "Case 23:": "case23", "Case 24:": "case24"
+            "EMAIL ACQUIRER/MERCHANT, Produk QR": "case1",
+            "EMAIL MERCHANT LEBIH DARI 1, Produk QR": "case3",
+            "EMAIL ACQUIRER QRCB INBOUND, Produk QR CB": "case4",
+            "EMAIL NAMA MERCHANT ANOMALI (Acquirer), Produk QR": "case5",
+            "EMAIL NAMA MERCHANT ANOMALI (Issuer), Produk QR": "case5_issuer",
+            "EMAIL ACQUIRER QRCB OUTBOUND, Produk QR CB": "case6",
+            "EMAIL ISSUER/CUSTOMER QRCB, Produk QR CB": "case7",
+            "EMAIL ISSUER LEBIH DARI 1 CPAN, Produk QR": "case8",
+            "EMAIL ISSUER/CUSTOMER, Produk QR": "case9",
+            "EMAIL ISSUER PROCODE 263000, Produk QR": "case10",
+            "EMAIL ISSUER SUSPECT RC 59, Produk QR": "case11",
+            "EMAIL ISSUER QRCB OUTBOUND, Produk QR CB": "case12",
+            "EMAIL ISSUER KENAIKAN MERCHANT RC 107, Produk QR": "case13",
+            "EMAIL ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR": "case14",
+            "EMAIL ISSUER QR DOM APPROVE > 50 KALI, Produk QR": "case15",
+            "EMAIL DISBURSEMENT SENDER, Produk Disbursement": "case16",
+            "EMAIL DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary": "case17",
+            "EMAIL DISBURSEMENT SENDER CV/PT, Produk Disbursement": "case18",
+            "EMAIL BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement": "case19",
+            "EMAIL QR TRANSFER BENEFICIARY, Produk QR Transfer": "case20",
+            "EMAIL QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer": "case21",
+            "EMAIL ATM BEDA KOTA, Produk ATM": "case22",
+            "EMAIL ATM TRANSFER SENDER, Produk ATM": "case23",
+            "EMAIL ATM WITHDRAWAL, Produk ATM withdrawal": "case24"
         }
         
-        case_key = "case1"
-        for prefix, k in case_map.items():
-            if prefix in chosen_case:
-                case_key = k
-                break
+        # Ambil key dari dictionary mapping. Default ke case1 jika tidak ditemukan (fallback)
+        case_key = case_map.get(chosen_case, "case1")
 
         final_key = f"{case_key}_id" if actual_lang == "Bahasa Indonesia" else f"{case_key}_en"
 
