@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import io
 import re
-from templates import TEMPLATES
 
 # 1. SETTING LAYOUT (Tampilan Penuh)
 st.set_page_config(page_title="Email Template Generator - FDS", layout="wide")
