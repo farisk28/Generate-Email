@@ -16,7 +16,7 @@ def format_date(dt):
         return ""
     return f"{dt.month}/{dt.day}/{dt.year} {dt.strftime('%H:%M:%S')}"
 
-# --- DATABASE KATEGORI PRODUK & FORMAT CASE LENGKAP (KATA "EMAIL" DIHAPUS) ---
+# --- DATABASE KATEGORI PRODUK & FORMAT CASE LENGKAP ---
 PRODUCT_CASES = {
     "QR Domestik": [
         "ACQUIRER/MERCHANT, Produk QR",
@@ -257,7 +257,7 @@ if uploaded_file is not None:
             "ATM WITHDRAWAL, Produk ATM withdrawal": "case24"
         }
         
-        # Ambil key dari dictionary mapping. Default ke case1 jika tidak ditemukan (fallback)
+        # Ambil key dari dictionary mapping. Default ke case1 jika tidak ditemukan
         case_key = case_map.get(chosen_case, "case1")
 
         final_key = f"{case_key}_id" if actual_lang == "Bahasa Indonesia" else f"{case_key}_en"
@@ -273,6 +273,17 @@ if uploaded_file is not None:
             cpan_count_string=cpan_count_string if 'cpan_count_string' in locals() else "",
             cpan_count_string_en=cpan_count_string_en if 'cpan_count_string_en' in locals() else ""
         )
+
+        # === PEMBERSIH PINTAR (SMART CLEANER) ===
+        # Hanya menghapus baris peluru/angka yang benar-benar kosong variabelnya (contoh "4. "), 
+        # TAPI membiarkan baris kosong (enter/spasi antar paragraf) tetap utuh!
+        cleaned_lines = []
+        for line in email_text.split('\n'):
+            if re.match(r'^\d+\.\s*$', line.strip()):
+                continue # Skip jika baris ini hanya nomor urut yang kosong
+            cleaned_lines.append(line)
+            
+        email_text = "\n".join(cleaned_lines)
 
         # --- TAMPILAN OUTPUT UTAMA ---
         st.subheader("📋 Hasil Ekstraksi Draf Teks Email")
