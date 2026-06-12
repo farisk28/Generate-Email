@@ -1,333 +1,545 @@
-import streamlit as st
-import pandas as pd
-import io
-import re
+# templates.py
 
-# 1. SETTING LAYOUT (Tampilan Penuh)
-st.set_page_config(page_title="Email Template Generator - FDS", layout="wide")
+# ================= BAGIAN PENUTUP STANDAR (FOOTER) =================
+FOOTER_ID = """
 
-st.title("✉️ Email Template Generator - FDS ALTO")
-st.write("Unggah data transaksi FDS untuk mengekstrak indikasi fraud dan membuat email secara otomatis. (Bisa menggunakan file CSV atau Excel)")
+Mohon dapat menginformasikan kembali hasil pengecekannya, agar kami dapat meningkatkan akurasi pada FDS kami. Jika diperlukan kami juga dapat mendukung terkait kasus fraud yang terkonfirmasi sesuai dengan kewenangan yang diberikan kepada PT. ALTO Network.
 
-# Fungsi pembantu format tanggal
-def format_date(dt):
-    if pd.isnull(dt):
-        return ""
-    return f"{dt.month}/{dt.day}/{dt.year} {dt.strftime('%H:%M:%S')}"
+Note: Password akan kami kirim dengan email terpisah.
 
-# --- DATABASE KATEGORI PRODUK & FORMAT CASE LENGKAP ---
-PRODUCT_CASES = {
-    "QR Domestik": [
-        "ACQUIRER/MERCHANT, Produk QR",
-        "MERCHANT LEBIH DARI 1, Produk QR",
-        "NAMA MERCHANT ANOMALI (Acquirer), Produk QR",
-        "NAMA MERCHANT ANOMALI (Issuer), Produk QR",
-        "ISSUER LEBIH DARI 1 CPAN, Produk QR",
-        "ISSUER/CUSTOMER, Produk QR",
-        "ISSUER PROCODE 263000, Produk QR",
-        "ISSUER SUSPECT RC 59, Produk QR",
-        "ISSUER KENAIKAN MERCHANT RC 107, Produk QR",
-        "ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR",
-        "ISSUER QR DOM APPROVE > 50 KALI, Produk QR"
-    ],
-    "QR Cross Border (QRCB)": [
-        "ACQUIRER QRCB INBOUND, Produk QR CB",
-        "ACQUIRER QRCB OUTBOUND, Produk QR CB",
-        "ISSUER/CUSTOMER QRCB, Produk QR CB",
-        "ISSUER QRCB OUTBOUND, Produk QR CB"
-    ],
-    "Disbursement": [
-        "DISBURSEMENT SENDER, Produk Disbursement",
-        "DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary",
-        "DISBURSEMENT SENDER CV/PT, Produk Disbursement",
-        "BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement"
-    ],
-    "QR Transfer": [
-        "QR TRANSFER BENEFICIARY, Produk QR Transfer",
-        "QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer"
-    ],
-    "ATM": [
-        "ATM BEDA KOTA, Produk ATM",
-        "ATM TRANSFER SENDER, Produk ATM",
-        "ATM WITHDRAWAL, Produk ATM withdrawal"
-    ]
+Demikian yang dapat kami sampaikan,
+atas perhatiannya kami ucapkan terima kasih
+ 
+Simple Payment, Redefined.
+Best Regards,
+Fraud Analyst
+Enterprise, Architecture & Cybersecurity
+Hotline Whatsapp : 0851 7968 1636
+PT. ALTO Network"""
+
+FOOTER_EN = """
+
+Please inform us of the results of your review so that we may enhance the accuracy of our Fraud Detection System (FDS). If required, we are also able to provide support for confirmed fraud cases in accordance with the authority granted to PT. ALTO Network.
+
+Note: The password will be sent in a separate email.
+
+This concludes the information we would like to convey.
+Thank you for your kind attention.
+
+Simple Payment, Redefined.
+Best Regards,
+Fraud Analyst
+Enterprise, Architecture & Cybersecurity
+Hotline Whatsapp : 0851 7968 1636
+PT. ALTO Network"""
+
+
+# ================= KAMUS TEMPLATE LENGKAP (24 CASE FDS) =================
+TEMPLATES = {
+    # -----------------------------------------------------------------
+    # KELOMPOK DOMESTIK (HANYA BAHASA INDONESIA)
+    # -----------------------------------------------------------------
+    
+    "case1_id": """Dear Rekan {target_name}, 
+
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada MPAN ({mpan_display}) Acquirer {target_name} Merchant {m_name} 
+
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Total nilai transaksi Rp {formatted_amount} 
+2. {indikasi_nominal} 
+3. {indikasi_decline} 
+4. Transaksi dilakukan pada merchant {m_name} 
+5. Transaksi terjadi pada periode {min_date} - {max_date}
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah dari sisi merchant terdapat indikasi abuse? 
+2. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir? 
+3. Apakah profil merchant sesuai dengan pola transaksinya? 
+4. Apakah merchant merupakan merchant online, jika iya apakah ada link web merchant/transaksi-nya ? 
+5. Jika transaksi di merchant tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+
+    "case2_id": """Dear Rekan {target_name}, 
+
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada MPAN ({mpan_display}) Acquirer {target_name} Merchant {m_name} 
+
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Terdapat kenaikan transaksi yang mendapat Response Code 107 (Suspected Fraud) pada 1 Merchant yaitu {m_name} 
+2. Transaksi terjadi pada periode waktu {min_date} - {max_date} 
+3. Transaksi dilakukan oleh {cpan_count_string} dengan beberapa transaksi pertama mendapatkan Response Code 001 (Approved) kemudian transaksi selanjutnya mendapatkan Response Code 107 (Suspected Fraud) 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah dari sisi merchant terdapat indikasi abuse? Jika iya, mohon memberikan penjelasannya. 
+2. Mengapa transaksi-transaksi tersebut mendapatkan Response Code 107 ”Suspected Fraud” ? 
+3. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir? 
+4. Apakah profil merchant sesuai dengan pola transaksinya? 
+5. Jika transaksi di merchant tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+
+    "case3_id": """Dear Rekan {target_name}, 
+
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Acquirer {target_name} dengan merchant sebagai berikut : {merchant_list_string}.
+
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Total nilai transaksi Rp {formatted_amount} 
+2. Terjadi transaksi berulang dalam interval waktu yang singkat 
+3. {indikasi_nominal} 
+4. {indikasi_cpan_merchant} 
+5. Transaksi terjadi pada periode {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah dari sisi merchant terdapat indikasi abuse? 
+2. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir? 
+3. Apakah profil merchant sesuai dengan pola transaksinya? 
+4. Apakah merchant merupakan merchant online, jika iya apakah ada link web merchant/transaksi-nya ? 
+5. Jika transaksi di merchant tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+
+    "case5_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada MPAN ({mpan_display}) Acquirer {target_name} Merchant {m_name}. 
+ 
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Transaksi dilakukan kepada merchant dengan nama yang terdeteksi tidak wajar, yaitu {m_name} 
+2. Nama tersebut tidak menyerupai merchant resmi pada umumnya. 
+3. Transaksi dilakukan dalam periode waktu {min_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Barang atau jasa apa yang ditawarkan oleh merchant pada transaksi terlampir? 
+2. Apakah profil merchant sesuai dengan pola transaksinya? 
+3. Apakah nama merchant sesuai dengan bidang usahanya? 
+4. Jika transaksi pada merchant tersebut merupakan transaksi genuine, mohon berikan penjelasannya.""" + FOOTER_ID,
+
+    "case5_issuer_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_list_string}). 
+ 
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Transaksi dilakukan kepada merchant dengan nama yang terdeteksi tidak wajar, yaitu {m_name} 
+2. Nama tersebut tidak menyerupai merchant resmi pada umumnya. 
+3. Transaksi dilakukan dalam periode waktu {min_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Apakah nasabah menerima tautan atau pesan mencurigakan sebelum transaksi terjadi? 
+3. Apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+4. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case8_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN {cpan_list_string}
+
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Total keseluruhan transaksi adalah Rp {formatted_amount} 
+2. {indikasi_limit_cpan} 
+3. {indikasi_nominal} 
+4. {indikasi_procode} 
+5. {indikasi_cpan_merchant} 
+6. Transaksi terjadi pada periode {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:   
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case9_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN {cpan_list_string}. 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. {indikasi_limit_cpan} 
+2. Transaksi secara berulang dalam kurun waktu yang berdekatan dan singkat 
+3. {indikasi_nominal} 
+4. Transaksi dilakukan pada berbagai merchant berbeda-beda 
+5. Transaksi terjadi pada periode {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:   
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case10_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN {cpan_list_string}. 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. {indikasi_limit_cpan} 
+2. Transaksi secara berulang dalam kurun waktu yang berdekatan dan singkat 
+3. {indikasi_nominal} 
+4. {indikasi_procode} 
+5. Transaksi dilakukan pada 1 Merchant yaitu {m_name} 
+6. Transaksi dilakukan pada waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:   
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case11_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN {cpan_list_string}. 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Total nilai transaksi keseluruhan Rp {formatted_amount} 
+2. {indikasi_limit_cpan} 
+3. Transaksi secara berulang dalam kurun waktu yang berdekatan 
+4. {indikasi_nominal} 
+5. {indikasi_cpan_merchant} 
+6. {indikasi_decline} 
+7. Transaksi dilakukan dalam periode waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:   
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case13_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN {cpan_list_string}. 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. {indikasi_limit_cpan} 
+2. Transaksi secara berulang dalam kurun waktu yang berdekatan dan singkat 
+3. {indikasi_nominal} 
+4. Transaksi dilakukan pada 1 Merchant yaitu {m_name} 
+5. Transaksi pertama mendapatkan Response Code 001 (Approved) kemudian transaksi selanjutnya mendapatkan Response Code 107 (Suspected Fraud) 
+6. Transaksi terjadi pada periode {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:   
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case14_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada MPAN ({mpan_display}) Acquirer {target_name} Merchant {m_name}. 
+ 
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Transaksi dilakukan secara berulang pada kurun waktu berdekatan 
+2. {indikasi_nominal} 
+3. {indikasi_cpan_merchant} 
+4. {indikasi_dini_hari} 
+5. Transaksi dilakukan dalam periode waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah dari sisi merchant terdapat indikasi abuse? 
+2. Apakah sedang dilakukan pameran? 
+3. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir? 
+4. Apakah profil merchant sesuai dengan pola transaksinya? 
+5. Apakah merchant tersebut beroperasi selama 24 jam? 
+6. Apakah merchant merupakan merchant online, jika iya apakah ada link web merchant/transaksi-nya ? 
+7. Jika transaksi di merchant tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+
+    "case15_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_list_string}). 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Transaksi dilakukan secara berulang pada kurun waktu berdekatan 
+2. {indikasi_dini_hari} 
+3. {indikasi_nominal} 
+4. {indikasi_cpan_merchant} 
+5. Transaksi dilakukan dalam periode waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:   
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case16_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi anomali berpotensi fraud yang terjadi pada Sender {sender_bank} dengan Sender Account {sender_account} ({sender_name}) 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Total nilai transaksi yang dilakukan adalah Rp {formatted_amount} 
+2. Terdapat 1 Sender Account yang melakukan transaksi ke banyak Beneficiary Account yang berbeda 
+3. Transaksi dilakukan secara berulang 
+4. Terdapat transaksi yang dilakukan dengan nominal yang besar. 
+5. Transaksi dilakukan melebihi Rp 10,000,000/transaksi 
+6. Transaksi dilakukan antara waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Apakah dari sisi sender terdapat indikasi fraud? 
+3. Berapa limit harian/bulanan untuk melakukan transfer Disbursement 
+4. Apakah profil sender sesuai dengan pola transaksinya? 
+5. Apakah transaksi tersebut sudah sesuai dengan syarat dan ketentuan yang berlaku ? 
+6. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case17_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini, kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Sender {sender_name} ({sender_account}) pada Beneficiary {merchant_list_string}. 
+ 
+Adapun Anomali transaksi yang kami temukan terkait transaksi tersebut : 
+1. Total nilai transaksi Rp {formatted_amount} 
+2. Transaksi didominasi dengan nominal yang besar 
+3. Transaksi dilakukan secara berulang dalam waktu berdekatan 
+4. Transaksi dilakukan oleh 1 Sender Account pada 1 Beneficiary dengan {unique_merchants} Account 
+5. Transaksi dilakukan dalam periode waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri? 
+2. Apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Apabila transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya. 
+4. Mohon diinformasikan ketentuan mengenai batas limit transaksi harian serta batas limit per transaksi yang berlaku untuk masing-masing account.""" + FOOTER_ID,
+
+    "case18_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi anomali berpotensi fraud yang terjadi pada Sender {target_name} dengan Sender Account {sender_account} ({sender_name}). 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Total nilai transaksi yang dilakukan adalah Rp {formatted_amount} 
+2. Terdapat 1 Sender Account yang melakukan transaksi ke {unique_merchants} Beneficiary Account yang berbeda 
+3. Transaksi dilakukan secara berulang dalam waktu berdekatan 
+4. Terdapat transaksi yang dilakukan dengan nominal besar 
+5. Transaksi dilakukan pada periode waktu antara {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Apakah dari sisi sender terdapat indikasi fraud? 
+3. Barang / jasa apa yang ditawarkan sender pada transaksi terlampir? 
+4. Berapa limit harian/bulanan untuk melakukan transfer Disbursement? 
+5. Apakah profil sender sesuai dengan pola transaksinya? 
+6. Apakah transaksi tersebut sudah sesuai dengan syarat dan ketentuan yang berlaku ? 
+7. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case19_id": """Dear Tim {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Benef di file terlampir. 
+ 
+Indikasi Transaksi: 
+1. Transaksi dilakukan dalam waktu yang berdekatan 
+2. Periode waktu transaksi {min_date} - {max_date} dalam {total_trx} transaksi dengan total nilai Rp {formatted_amount} 
+3. Sender/Pengirim dilakukan secara berulang kepada Beneficiary/Penerima yang sama 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut : 
+1. Apakah dari sisi Benef terdapat indikasi fraud? 
+2. Barang / jasa apa yang ditawarkan Benef pada transaksi terlampir? 
+3. Apakah profil Benef sesuai dengan pola transaksinya? 
+4. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+
+    "case20_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Beneficiary PAN ({mpan_display}). 
+ 
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Terjadi transaksi berulang dalam interval waktu yang singkat 
+2. Transaksi inquiry dengan Procode 266000 dilakukan sebanyak {total_trx} transaksi 
+3. Transaksi terjadi pada periode {min_date} – {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah dari sisi beneficiary terdapat indikasi abuse? 
+2. Apakah secara behaviour untuk transaksi transfer yang dilakukan dengan transaksi inquiry dengan jumlah yang cukup banyak sudah sesuai? 
+3. Apakah transaksi tersebut sesuai dengan syarat dan ketentuan? 
+4. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+
+    "case21_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini, kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_list_string}) pada Beneficiary PAN ({mpan_display}). 
+ 
+Adapun Anomali transaksi yang kami temukan terkait transaksi tersebut : 
+1. Total nilai transaksi Rp {formatted_amount} 
+2. Transaksi dilakukan dengan nominal besar kemudian semakin kecil 
+3. Transaksi dilakukan secara berulang dalam waktu berdekatan 
+4. Transaksi dilakukan oleh 1 CPAN yang sama pada 1 Benef PAN 
+5. {indikasi_decline} 
+6. Transaksi dilakukan dalam periode waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri? 
+2. Apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Apabila transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+
+    "case22_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi anomali berpotensi fraud yang terjadi pada Transaksi Withdrawal PAN ({cpan_list_string}). 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Transaksi dilakukan di 2 kota yang berbeda berdasarkan nama lokasi ATM 
+2. Transaksi dilakukan dalam waktu dekat dan singkat 
+3. Transaksi dilakukan antara waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Apakah terdapat indikasi ATO pada kartu tersebut ? 
+3. Apakah transaksi tersebut sudah sesuai dengan syarat dan ketentuan yang berlaku ? 
+4. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case23_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi anomali berpotensi fraud yang terjadi pada Transaksi Transfer dengan Sender {target_name} ke Beneficiary {merchant_list_string}. 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Total nilai transaksi yang dilakukan adalah Rp {formatted_amount} 
+2. Terdapat Banyak Sender yang melakukan transaksi ke 1 Beneficiary Account yang sama. 
+3. Terdapat sebanyak {unique_merchants} Beneficiary Account yang menerima banyak transaksi dari beberapa Sender. 
+4. Transaksi dilakukan secara berulang dalam waktu berdekatan dan singkat. 
+5. Transaksi dilakukan antara waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Berapa limit harian/bulanan untuk melakukan transfer? 
+3. Apakah transaksi tersebut sudah sesuai dengan syarat dan ketentuan yang berlaku ? 
+4. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case24_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Issuer {target_name}. 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Total nilai transaksi keseluruhan Rp {formatted_amount} 
+2. Transaksi yang dilakukan oleh 1 PAN dengan Response Code 55, kemudian transaksi selanjutnya mendapatkan Response Code 59 
+3. Terdapat PAN yang transaksi setelah Response Code 59 mendapatkan Response Code 00 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Apakah ada abuse pada sisi Issuer? 
+3. Bagaimana kebijakan transaksi dari sisi Issuer jika transaksi tersebut mendapatkan Response Code 55 atau Response Code 59? 
+4. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+
+    # -----------------------------------------------------------------
+    # KELOMPOK CROSS BORDER (QRCB) - BILINGUAL (ID & EN)
+    # -----------------------------------------------------------------
+    
+    "case4_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada MPAN ({mpan_display}) Acquirer {target_name} Merchant {m_name}. 
+ 
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Transaksi merupakan QR cross-border 
+2. Total nilai transaksi mencapai Rp {formatted_amount} 
+3. Transaksi dilakukan dengan nominal besar 
+4. {indikasi_decline} 
+5. Transaksi berulang dilakukan dalam kurun waktu yang berdekatan dan singkat 
+6. Transaksi dilakukan pada waktu yaitu {min_date} - {max_date} 
+7. {indikasi_cpan_merchant} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah dari sisi merchant terdapat indikasi abuse? 
+2. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir? 
+3. Apakah profil merchant sesuai dengan pola transaksinya? 
+4. Apakah sedang berlangsung event pada merchant tersebut? 
+5. Jika transaksi di merchant tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+
+    "case4_en": """Dear {target_name} Team, 
+ 
+With reference to this email, we, as the switching provider, have an obligation as a Payment Infrastructure Provider to ensure consumer safety and protection. We kindly request your assistance in conducting due diligence on the potentially fraudulent transactions associated with MPAN ({mpan_display}) Acquirer {target_name} Merchant {m_name}. 
+ 
+The indications we have identified in relation to these transactions are as follows: 
+1. The transaction is a QR cross-border 
+2. The total transaction amount reached IDR {formatted_amount} 
+3. Transactions were conducted with large amounts 
+4. {indikasi_decline} 
+5. Repeated transactions were performed within a close and short period of time 
+6. Transactions were conducted within the time of {min_date} - {max_date} 
+7. {indikasi_cpan_merchant} 
+ 
+Additionally, we kindly request your assistance in confirming the following points: 
+1. Is there any indication of abuse from the merchant's side? 
+2. What goods or services are offered by the merchant in the attached transactions? 
+3. Does the merchant's profile match their transaction pattern? 
+4. Is there an ongoing event at the merchant? 
+5. If the transactions at the merchant are deemed genuine, kindly provide further explanation.""" + FOOTER_EN,
+
+    "case6_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Acquirer {target_name} Merchant {m_name}. 
+ 
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Transaksi merupakan QR cross-border. 
+2. Total nilai transaksi mencapai Rp {formatted_amount}. 
+3. Volume transaksi tidak wajar, mencapai puluhan juta rupiah. 
+4. Transaksi terjadi secara berurutan dalam interval waktu yang singkat, yaitu pada {min_date} – {max_date} (waktu lokal Indonesia). 
+5. {indikasi_cpan_merchant} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah dari sisi merchant terdapat indikasi abuse? 
+2. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir? 
+3. Apakah profil merchant sesuai dengan pola transaksinya? 
+4. Apakah merchant merupakan merchant online, jika iya apakah ada link web merchant/transaksi-nya? 
+5. Jika transaksi di merchant tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+
+    "case6_en": """Dear Team {target_name}, 
+ 
+With reference to this email, we, as the switching operator, have an obligation as a Payment Infrastructure Provider to ensure consumer protection and security. We kindly request your assistance in conducting due diligence on transactions with potential fraud indications involving the Acquirer {target_name} Merchant {m_name}. 
+ 
+The indications we have identified regarding these transactions are as follows: 
+1. The transactions were QR cross-border. 
+2. A total transaction value of IDR {formatted_amount}. 
+3. Unusually high transaction volume, reaching tens of millions of rupiah. 
+4. Transactions occurred in rapid succession within a short time interval, specifically between {min_date} – {max_date} (local time indonesia) 
+5. {indikasi_cpan_merchant} 
+ 
+In addition, we kindly request your confirmation regarding the following points: 
+1. Are there any indications of abuse from the merchant’s side? 
+2. What goods/services were offered by the merchant in the attached transactions? 
+3. Does the merchant’s profile align with the observed transaction patterns? 
+4. Is the merchant an online merchant? If so, could you provide the merchant/transaction website link? 
+5. If the transactions at this merchant are genuine, please provide your explanation.""" + FOOTER_EN,
+
+    "case7_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN ({cpan_list_string}). 
+ 
+Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut: 
+1. Transaksi merupakan transaksi QR cross-border. 
+2. Total nilai transaksi mencapai Rp {formatted_amount}. 
+3. Terjadi transaksi berulang dalam interval waktu yang singkat. 
+4. {indikasi_nominal} 
+5. Transaksi terjadi pada periode waktu {min_date} - {max_date}. 
+6. {indikasi_cpan_merchant} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case7_en": """Dear {target_name} Team, 
+ 
+With reference to this email, we, as the switching provider, have an obligation as a Payment Infrastructure Provider to ensure consumer safety and protection. We kindly request your assistance in conducting due diligence on the potentially fraudulent transactions associated with CPAN ({cpan_list_string}). 
+ 
+The indications we have identified in relation to these transactions are as follows: 
+1. The transactions are cross-border QR transactions 
+2. Total transaction value is IDR {formatted_amount} 
+3. Repeated transactions occurred within a short time interval 
+4. {indikasi_nominal} 
+5. The transactions were carried out during time periods {min_date} - {max_date} 
+6. {indikasi_cpan_merchant} 
+ 
+Additionally, we kindly request your assistance in confirming the following points: 
+1. Were all the transactions listed in the attached file genuinely performed by the customer? 
+2. If there is an ongoing promotion from the Issuer, were these transactions in compliance with the applicable terms and conditions? 
+3. If the transactions are deemed genuine, kindly provide further explanation.""" + FOOTER_EN,
+
+    "case12_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada CPAN {cpan_list_string}. 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Transaksi merupakan QR cross-border  
+2. {indikasi_limit_cpan} 
+3. Transaksi secara berulang dalam kurun waktu yang berdekatan dan singkat 
+4. {indikasi_nominal} 
+5. Transaksi dilakukan pada 1 Merchant yaitu {m_name} 
+6. Transaksi terjadi pada periode {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:   
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
+
+    "case12_en": """Dear {target_name} Team, 
+ 
+With reference to this email, we, as the switching provider, have an obligation as a Payment Infrastructure Provider to ensure consumer safety and protection. We kindly request your assistance in conducting due diligence on the potentially fraudulent transactions associated with CPAN {cpan_list_string}. 
+ 
+The indications we have identified in relation to these transactions are as follows: 
+1. The transaction is a QR cross-border 
+2. {indikasi_limit_cpan} 
+3. Repeated transactions were performed within a close and short period of time 
+4. {indikasi_nominal} 
+5. Transactions were performed at 1 Merchant, which is {m_name} 
+6. Transactions occurred within the period of {min_date} - {max_date} 
+ 
+Additionally, we kindly request your assistance in confirming the following points:   
+1. Were all the transactions listed in the attached file genuinely performed by the customer? 
+2. If there is an ongoing promotion from the Issuer, were these transactions in compliance with the applicable terms and conditions? 
+3. If the transactions are deemed genuine, kindly provide further explanation.""" + FOOTER_EN,
 }
-
-# --- MENU DROPDOWN DI SIDEBAR ---
-st.sidebar.header("⚙️ Pengaturan Investigasi")
-
-# 1. Dropdown Tingkat Pertama (Pilih Produk)
-selected_product = st.sidebar.selectbox(
-    "Pilih Kategori Produk:",
-    options=list(PRODUCT_CASES.keys())
-)
-
-# 2. Dropdown Tingkat Kedua (Pilih Case)
-chosen_case = st.sidebar.selectbox(
-    "Pilih Jenis Case Investigasi:",
-    options=PRODUCT_CASES[selected_product]
-)
-
-# 3. Logika Smart UI Bahasa (Muncul khusus QRCB)
-if selected_product == "QR Cross Border (QRCB)":
-    actual_lang = st.sidebar.selectbox(
-        "Pilih Bahasa Email (Khusus Produk QRCB):",
-        options=["Bahasa Indonesia", "English"],
-        help="Gunakan English untuk partner internasional, dan Bahasa Indonesia untuk partner lokal."
-    )
-else:
-    actual_lang = "Bahasa Indonesia"
-
-target_name = st.sidebar.text_input("Nama Instansi Target (cth: DANA / BCA / ShopeePay / Astrapay)", value="DANA")
-
-# --- KOMPONEN UPLOAD FILE ---
-uploaded_file = st.file_uploader("Pilih file data transaksi (CSV atau Excel Workbook)", type=["csv", "xlsx", "xls"])
-
-if uploaded_file is not None:
-    try:
-        file_bytes = uploaded_file.read()
-        
-        # Penanganan Pembacaan File
-        if uploaded_file.name.endswith('.csv'):
-            try:
-                df = pd.read_csv(io.BytesIO(file_bytes), sep=',')
-            except Exception:
-                df = pd.read_csv(io.BytesIO(file_bytes), sep=';')
-        else:
-            try:
-                df = pd.read_excel(io.BytesIO(file_bytes))
-            except Exception as excel_err:
-                try:
-                    df = pd.read_csv(io.BytesIO(file_bytes), sep=',')
-                except Exception:
-                    df = pd.read_csv(io.BytesIO(file_bytes), sep=';')
-
-        if df.empty:
-            st.error("File tidak memiliki baris data.")
-            st.stop()
-
-        st.success("File data transaksi berhasil dimuat dan dianalisis!")
-
-        # 2. Pembersihan Data Masukan & Pencegahan Error NaN/Float
-        # Hapus baris yang kosong total (mencegah error dari baris rekapan Excel)
-        df.dropna(how='all', inplace=True)
-        
-        for col in df.columns:
-            df[col] = df[col].astype(str).str.strip("'").str.strip()
-                
-        if 'Merchant_Name' in df.columns:
-            # Gunakan penanganan aman untuk memastikan teks bisa di-split
-            df['Merchant_Name'] = df['Merchant_Name'].apply(lambda x: " ".join(str(x).split()) if pd.notnull(x) and str(x).lower() != 'nan' else "")
-            
-        if 'Amount_Trx' in df.columns:
-            df['Amount_Trx'] = pd.to_numeric(df['Amount_Trx'], errors='coerce')
-            
-        # Hapus baris di mana Amount_Trx invalid (sisa-sisa baris rekapan/korup)
-        df.dropna(subset=['Amount_Trx'], inplace=True)
-            
-        if 'Date_Time' in df.columns:
-            df['Date_Time'] = pd.to_datetime(df['Date_Time'], errors='coerce')
-
-        # ================= LOGIKA MATRIKS ATURAN (RULE-BASED REASONING) =================
-        
-        total_trx = len(df)
-        total_amount = int(df['Amount_Trx'].sum()) if 'Amount_Trx' in df.columns else 0
-        formatted_amount = f"{total_amount:,}".replace(",", ".")
-
-        min_date = format_date(df['Date_Time'].min()) if 'Date_Time' in df.columns else ""
-        max_date = format_date(df['Date_Time'].max()) if 'Date_Time' in df.columns else ""
-
-        # Deteksi Waktu Dini Hari (00:00 - 04:00)
-        dini_hari_found = False
-        if 'Date_Time' in df.columns:
-            dini_hari_trx = df[(df['Date_Time'].dt.hour >= 0) & (df['Date_Time'].dt.hour <= 4)]
-            if len(dini_hari_trx) > 0:
-                dini_hari_found = True
-
-        # A. Pengkondisian Deteksi Nominal (Smart Analytics Modulo 1000)
-        formatted_top_nominal = "0"
-        indikasi_nominal = ""
-        
-        if 'Amount_Trx' in df.columns and not df['Amount_Trx'].empty:
-            # Cari nominal yang paling banyak muncul persis
-            top_nominal = df['Amount_Trx'].mode()[0]
-            top_nominal_freq = (df['Amount_Trx'] == top_nominal).sum()
-            rasio_sama = top_nominal_freq / total_trx
-            formatted_top_nominal = f"{int(top_nominal):,}".replace(",", ".")
-            
-            # Cari seberapa banyak transaksi dengan angka keriting/unik (tidak berakhiran 000)
-            df_keriting = df[df['Amount_Trx'] % 1000 != 0]
-            rasio_keriting = len(df_keriting) / total_trx
-            
-            if rasio_sama > 0.7:
-                if actual_lang == "Bahasa Indonesia":
-                    indikasi_nominal = f"Transaksi didominasi dengan nominal yang sama yaitu Rp {formatted_top_nominal}"
-                else:
-                    indikasi_nominal = f"Transactions are dominated by the same amount, which is IDR {formatted_top_nominal}"
-                    
-            elif rasio_keriting > 0.3:
-                # Ambil hingga 3 contoh sampel angka keriting dari data sesungguhnya
-                sampel_unik = df_keriting['Amount_Trx'].drop_duplicates().head(3).astype(int)
-                sampel_str = ", ".join([f"Rp{x:,}".replace(",", ".") for x in sampel_unik])
-                
-                if actual_lang == "Bahasa Indonesia":
-                    indikasi_nominal = f"Transaksi didominasi dengan angka unik/keriting, seperti {sampel_str}, dst"
-                else:
-                    # Hilangkan prefix 'Rp' untuk draf bahasa inggris
-                    sampel_str_en = sampel_str.replace("Rp", "IDR ")
-                    indikasi_nominal = f"Transactions are dominated by unique/patterned amounts, such as {sampel_str_en}, etc."
-                    
-            else:
-                if actual_lang == "Bahasa Indonesia":
-                    indikasi_nominal = "Transaksi dilakukan dengan pola nominal yang bervariasi"
-                else:
-                    indikasi_nominal = "Transactions were conducted with varied amounts"
-
-        # B. Deteksi Unik CPAN, MPAN & Nama Merchant/Sender
-        unique_cpans = df['CPAN_Masking'].nunique() if 'CPAN_Masking' in df.columns else 0
-        unique_merchants = df['Merchant_Name'].nunique() if 'Merchant_Name' in df.columns else 0
-        
-        cpan_display = df['CPAN_Masking'].iloc[0] if unique_cpans > 0 else "[CPAN]"
-        mpan_display = df['MPAN_Masking'].iloc[0] if 'MPAN_Masking' in df.columns and len(df) > 0 else "[MPAN]"
-        m_name = df['Merchant_Name'].iloc[0] if unique_merchants > 0 else "[MERCHANT]"
-
-        sender_bank = df['Sender_Bank'].iloc[0] if 'Sender_Bank' in df.columns else target_name
-        sender_account = df['Sender_Account'].iloc[0] if 'Sender_Account' in df.columns else "[SENDER_ACCOUNT]"
-        sender_name = df['Sender_Name'].iloc[0] if 'Sender_Name' in df.columns else "[SENDER_NAME]"
-
-        if 'CPAN_Masking' in df.columns:
-            cpan_list_string = ", ".join(df['CPAN_Masking'].unique().tolist())
-        else:
-            cpan_list_string = cpan_display
-
-        # Kondisi CPAN & Merchant (Indonesia / English)
-        if actual_lang == "Bahasa Indonesia":
-            cpan_count_string = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} CPAN berbeda"
-            if "QR TRANSFER 1 SENDER 1 BENEFICIARY" in chosen_case:
-                indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN yang sama pada 1 Benef PAN"
-            else:
-                indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada 1 Merchant yang sama yaitu {m_name}" if unique_cpans == 1 else "Transaksi dilakukan oleh CPAN yang sama pada merchant yang berbeda"
-        else:
-            cpan_count_string_en = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} different CPANs"
-            indikasi_cpan_merchant = "Repeated transactions conducted by the same CPANs at the same merchant"
-
-        # Gabungan Multi Merchant
-        if unique_merchants > 1:
-            all_merchants = df['Merchant_Name'].unique().tolist()
-            merchant_list_string = " dan ".join([", ".join(all_merchants[:-1]), all_merchants[-1]]) if len(all_merchants) > 1 else all_merchants[0]
-        else:
-            merchant_list_string = m_name
-
-        # C. Limit Akumulasi Per-CPAN
-        indikasi_limit_cpan = ""
-        if 'CPAN_Masking' in df.columns and 'Amount_Trx' in df.columns:
-            cpan_grp = df.groupby('CPAN_Masking')['Amount_Trx'].sum()
-            if len(cpan_grp[cpan_grp > 4000000]) > 0:
-                indikasi_limit_cpan = "1 CPAN melakukan transaksi dengan total nominal > Rp 4 Juta" if actual_lang == "Bahasa Indonesia" else "1 CPAN performed transactions with total > IDR 4 Million"
-            else:
-                indikasi_limit_cpan = f"1 CPAN melakukan transaksi dengan total nilai Rp {formatted_amount}" if actual_lang == "Bahasa Indonesia" else f"1 CPAN conducted transactions with total value IDR {formatted_amount}"
-
-        # D. Deteksi Response Code & Procode
-        rc_61_count = rc_107_count = rc_59_count = rc_57_count = rc_96_count = 0
-        if 'Response_Code' in df.columns:
-            rc_61_count = len(df[df['Response_Code'].isin(['61', 'RC 61'])])
-            rc_107_count = len(df[df['Response_Code'].isin(['107', 'RC 107'])])
-            rc_59_count = len(df[df['Response_Code'].isin(['59', 'RC 59'])])
-            rc_57_count = len(df[df['Response_Code'].isin(['57', 'RC 57'])])
-            rc_96_count = len(df[df['Response_Code'].isin(['96', 'RC 96'])])
-
-        if actual_lang == "Bahasa Indonesia":
-            if rc_57_count > 0 and rc_96_count > 0:
-                indikasi_decline = "Terdapat banyak transaksi Payment mendapatkan Response Code 57 dan Response Code 96"
-            elif rc_59_count > 0:
-                indikasi_decline = "Terdapat banyak transaksi yang mendapatkan Response Code 59 ”Suspected Fraud”"
-            elif rc_61_count > 0:
-                indikasi_decline = "Terdapat transaksi yang mendapatkan Response Code 61"
-            else:
-                indikasi_decline = "Transaksi secara berulang dalam kurun waktu yang berdekatan"
-        else:
-            indikasi_decline = "Repeated transactions occurred within a short time interval"
-
-        indikasi_procode = "Transaksi dilakukan dengan Processing Code 263000" if (any(df['Procode'].astype(str).str.contains('263000')) if 'Procode' in df.columns else False) else ""
-        indikasi_dini_hari = "Transaksi dilakukan pada waktu dini hari" if dini_hari_found else ""
-
-        # =================================================================================
-
-        # 3. INTERPRETER KUNCI KASUS (Mapping Exact String)
-        case_map = {
-            "ACQUIRER/MERCHANT, Produk QR": "case1",
-            "MERCHANT LEBIH DARI 1, Produk QR": "case3",
-            "ACQUIRER QRCB INBOUND, Produk QR CB": "case4",
-            "NAMA MERCHANT ANOMALI (Acquirer), Produk QR": "case5",
-            "NAMA MERCHANT ANOMALI (Issuer), Produk QR": "case5_issuer",
-            "ACQUIRER QRCB OUTBOUND, Produk QR CB": "case6",
-            "ISSUER/CUSTOMER QRCB, Produk QR CB": "case7",
-            "ISSUER LEBIH DARI 1 CPAN, Produk QR": "case8",
-            "ISSUER/CUSTOMER, Produk QR": "case9",
-            "ISSUER PROCODE 263000, Produk QR": "case10",
-            "ISSUER SUSPECT RC 59, Produk QR": "case11",
-            "ISSUER QRCB OUTBOUND, Produk QR CB": "case12",
-            "ISSUER KENAIKAN MERCHANT RC 107, Produk QR": "case13",
-            "ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR": "case14",
-            "ISSUER QR DOM APPROVE > 50 KALI, Produk QR": "case15",
-            "DISBURSEMENT SENDER, Produk Disbursement": "case16",
-            "DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary": "case17",
-            "DISBURSEMENT SENDER CV/PT, Produk Disbursement": "case18",
-            "BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement": "case19",
-            "QR TRANSFER BENEFICIARY, Produk QR Transfer": "case20",
-            "QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer": "case21",
-            "ATM BEDA KOTA, Produk ATM": "case22",
-            "ATM TRANSFER SENDER, Produk ATM": "case23",
-            "ATM WITHDRAWAL, Produk ATM withdrawal": "case24"
-        }
-        
-        # Ambil key dari dictionary mapping. Default ke case1 jika tidak ditemukan (fallback)
-        case_key = case_map.get(chosen_case, "case1")
-        final_key = f"{case_key}_id" if actual_lang == "Bahasa Indonesia" else f"{case_key}_en"
-
-        template_raw = TEMPLATES[final_key]
-        
-        # Injeksi variabel ke dalam template
-        email_text = template_raw.format(
-            target_name=target_name, formatted_amount=formatted_amount, formatted_top_nominal=formatted_top_nominal,
-            total_trx=total_trx, min_date=min_date, max_date=max_date, m_name=m_name, cpan_display=cpan_display,
-            mpan_display=mpan_display, cpan_list_string=cpan_list_string, merchant_list_string=merchant_list_string,
-            indikasi_nominal=indikasi_nominal, indikasi_cpan_merchant=indikasi_cpan_merchant, indikasi_decline=indikasi_decline,
-            indikasi_procode=indikasi_procode, indikasi_limit_cpan=indikasi_limit_cpan, indikasi_dini_hari=indikasi_dini_hari,
-            sender_bank=sender_bank, sender_account=sender_account, sender_name=sender_name, unique_merchants=unique_merchants,
-            cpan_count_string=cpan_count_string if 'cpan_count_string' in locals() else "",
-            cpan_count_string_en=cpan_count_string_en if 'cpan_count_string_en' in locals() else ""
-        )
-
-        # === PEMBERSIH PINTAR (SMART CLEANER) ===
-        # Hanya menghapus baris peluru (1. / 2. / 3.) yang benar-benar kosong variabelnya.
-        # Menjaga baris kosong (enter) tetap utuh agar paragraf tidak menempel.
-        cleaned_lines = []
-        for line in email_text.split('\n'):
-            # Mengecek apakah baris ini HANYA memuat angka, titik, dan spasi kosong. Jika ya, abaikan (buang).
-            if re.match(r'^\d+\.\s*$', line.strip()):
-                continue 
-            cleaned_lines.append(line)
-            
-        email_text = "\n".join(cleaned_lines)
-
-        # --- TAMPILAN OUTPUT UTAMA ---
-        st.subheader("📋 Hasil Ekstraksi Draf Teks Email")
-        st.info(f"📁 **Produk:** {selected_product} | 🌐 **Bahasa:** {actual_lang} | 🎯 **Target Router:** `{final_key}`")
-        st.text_area("Salin teks hasil otomatisasi di bawah ini:", value=email_text, height=500)
-        
-        st.download_button(
-            label="📥 Download Teks Email (.txt)", data=email_text,
-            file_name=f"Draf_FDS_{target_name}_{actual_lang[:2].lower()}.txt", mime="text/plain"
-        )
-
-        # --- SUMMARY ANALYTICS ---
-        st.subheader("📊 Analitik Ringkasan Data Pendukung")
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Frekuensi Transaksi", f"{total_trx} Trx")
-        c2.metric("Total Nominal Terhitung", f"Rp {formatted_amount}")
-        c3.metric("Jumlah Unik CPAN/Sender", f"{unique_cpans if unique_cpans > 0 else 1}")
-        c4.metric("Deteksi RC Bermasalah", f"RC59: {rc_59_count} | RC57: {rc_57_count} | RC96: {rc_96_count}")
-
-    except Exception as e:
-        st.error(f"Terjadi kesalahan teknis pemrosesan: {e}")
