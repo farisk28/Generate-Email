@@ -274,8 +274,6 @@ if uploaded_file is not None:
             cpan_count_string_en=cpan_count_string_en if 'cpan_count_string_en' in locals() else ""
         )
 
-        email_text = "\n".join([line for line in email_text.split('\n') if line.strip() != ""])
-
         # --- TAMPILAN OUTPUT UTAMA ---
         st.subheader("📋 Hasil Ekstraksi Draf Teks Email")
         st.info(f"📁 **Produk:** {selected_product} | 🌐 **Bahasa:** {actual_lang} | 🎯 **Target Router:** `{final_key}`")
