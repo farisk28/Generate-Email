@@ -16,41 +16,41 @@ def format_date(dt):
         return ""
     return f"{dt.month}/{dt.day}/{dt.year} {dt.strftime('%H:%M:%S')}"
 
-# --- DATABASE KATEGORI PRODUK & FORMAT CASE LENGKAP (TANPA NOMOR & CASE 2 DIHAPUS) ---
+# --- DATABASE KATEGORI PRODUK & FORMAT CASE LENGKAP (KATA "EMAIL" DIHAPUS) ---
 PRODUCT_CASES = {
     "QR Domestik": [
-        "EMAIL ACQUIRER",
-        "EMAIL ACQUIRER LEBIH DARI 1",
-        "EMAIL NAMA MERCHANT ANOMALI UNTUK ACQUIRER",
-        "EMAIL NAMA MERCHANT ANOMALI UNTUK ISSUER",
-        "EMAIL ISSUER LEBIH DARI 1 CPAN",
-        "EMAIL ISSUER",
-        "EMAIL ISSUER PROCODE 263000",
-        "EMAIL ISSUER SUSPECT RC 59",
-        "EMAIL ISSUER KENAIKAN MERCHANT RC 107",
-        "EMAIL ACQUIRER QR DOM APPROVE > 50 KALI",
-        "EMAIL ISSUER QR DOM APPROVE > 50 KALI"
+        "ACQUIRER/MERCHANT, Produk QR",
+        "MERCHANT LEBIH DARI 1, Produk QR",
+        "NAMA MERCHANT ANOMALI (Acquirer), Produk QR",
+        "NAMA MERCHANT ANOMALI (Issuer), Produk QR",
+        "ISSUER LEBIH DARI 1 CPAN, Produk QR",
+        "ISSUER/CUSTOMER, Produk QR",
+        "ISSUER PROCODE 263000, Produk QR",
+        "ISSUER SUSPECT RC 59, Produk QR",
+        "ISSUER KENAIKAN MERCHANT RC 107, Produk QR",
+        "ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR",
+        "ISSUER QR DOM APPROVE > 50 KALI, Produk QR"
     ],
     "QR Cross Border (QRCB)": [
-        "EMAIL ACQUIRER QRCB INBOUND",
-        "EMAIL ACQUIRER QRCB OUTBOUND",
-        "EMAIL ISSUER QRCB INBOUND",
-        "EMAIL ISSUER QRCB OUTBOUND"
+        "ACQUIRER QRCB INBOUND, Produk QR CB",
+        "ACQUIRER QRCB OUTBOUND, Produk QR CB",
+        "ISSUER/CUSTOMER QRCB, Produk QR CB",
+        "ISSUER QRCB OUTBOUND, Produk QR CB"
     ],
     "Disbursement": [
-        "EMAIL DISBURSEMENT SENDER",
-        "EMAIL DISBURSEMENT 1 SENDER 1 BENEFICIARY",
-        "EMAIL DISBURSEMENT SENDER CV/PT",
-        "EMAIL DISBURSEMENT TRANSFER BENEFICIARY"
+        "DISBURSEMENT SENDER, Produk Disbursement",
+        "DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary",
+        "DISBURSEMENT SENDER CV/PT, Produk Disbursement",
+        "BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement"
     ],
     "QR Transfer": [
-        "EMAIL QR TRANSFER BENEFICIARY",
-        "EMAIL QR TRANSFER 1 SENDER 1 BENEFICIARY"
+        "QR TRANSFER BENEFICIARY, Produk QR Transfer",
+        "QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer"
     ],
     "ATM": [
-        "EMAIL ATM BEDA KOTA",
-        "EMAIL ATM TRANSFER SENDER",
-        "EMAIL ATM WITHDRAWAL"
+        "ATM BEDA KOTA, Produk ATM",
+        "ATM TRANSFER SENDER, Produk ATM",
+        "ATM WITHDRAWAL, Produk ATM withdrawal"
     ]
 }
 
@@ -231,30 +231,30 @@ if uploaded_file is not None:
 
         # 3. INTERPRETER KUNCI KASUS (Mapping Exact String ke Template Key)
         case_map = {
-            "EMAIL ACQUIRER/MERCHANT, Produk QR": "case1",
-            "EMAIL MERCHANT LEBIH DARI 1, Produk QR": "case3",
-            "EMAIL ACQUIRER QRCB INBOUND, Produk QR CB": "case4",
-            "EMAIL NAMA MERCHANT ANOMALI (Acquirer), Produk QR": "case5",
-            "EMAIL NAMA MERCHANT ANOMALI (Issuer), Produk QR": "case5_issuer",
-            "EMAIL ACQUIRER QRCB OUTBOUND, Produk QR CB": "case6",
-            "EMAIL ISSUER/CUSTOMER QRCB, Produk QR CB": "case7",
-            "EMAIL ISSUER LEBIH DARI 1 CPAN, Produk QR": "case8",
-            "EMAIL ISSUER/CUSTOMER, Produk QR": "case9",
-            "EMAIL ISSUER PROCODE 263000, Produk QR": "case10",
-            "EMAIL ISSUER SUSPECT RC 59, Produk QR": "case11",
-            "EMAIL ISSUER QRCB OUTBOUND, Produk QR CB": "case12",
-            "EMAIL ISSUER KENAIKAN MERCHANT RC 107, Produk QR": "case13",
-            "EMAIL ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR": "case14",
-            "EMAIL ISSUER QR DOM APPROVE > 50 KALI, Produk QR": "case15",
-            "EMAIL DISBURSEMENT SENDER, Produk Disbursement": "case16",
-            "EMAIL DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary": "case17",
-            "EMAIL DISBURSEMENT SENDER CV/PT, Produk Disbursement": "case18",
-            "EMAIL BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement": "case19",
-            "EMAIL QR TRANSFER BENEFICIARY, Produk QR Transfer": "case20",
-            "EMAIL QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer": "case21",
-            "EMAIL ATM BEDA KOTA, Produk ATM": "case22",
-            "EMAIL ATM TRANSFER SENDER, Produk ATM": "case23",
-            "EMAIL ATM WITHDRAWAL, Produk ATM withdrawal": "case24"
+            "ACQUIRER/MERCHANT, Produk QR": "case1",
+            "MERCHANT LEBIH DARI 1, Produk QR": "case3",
+            "ACQUIRER QRCB INBOUND, Produk QR CB": "case4",
+            "NAMA MERCHANT ANOMALI (Acquirer), Produk QR": "case5",
+            "NAMA MERCHANT ANOMALI (Issuer), Produk QR": "case5_issuer",
+            "ACQUIRER QRCB OUTBOUND, Produk QR CB": "case6",
+            "ISSUER/CUSTOMER QRCB, Produk QR CB": "case7",
+            "ISSUER LEBIH DARI 1 CPAN, Produk QR": "case8",
+            "ISSUER/CUSTOMER, Produk QR": "case9",
+            "ISSUER PROCODE 263000, Produk QR": "case10",
+            "ISSUER SUSPECT RC 59, Produk QR": "case11",
+            "ISSUER QRCB OUTBOUND, Produk QR CB": "case12",
+            "ISSUER KENAIKAN MERCHANT RC 107, Produk QR": "case13",
+            "ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR": "case14",
+            "ISSUER QR DOM APPROVE > 50 KALI, Produk QR": "case15",
+            "DISBURSEMENT SENDER, Produk Disbursement": "case16",
+            "DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary": "case17",
+            "DISBURSEMENT SENDER CV/PT, Produk Disbursement": "case18",
+            "BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement": "case19",
+            "QR TRANSFER BENEFICIARY, Produk QR Transfer": "case20",
+            "QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer": "case21",
+            "ATM BEDA KOTA, Produk ATM": "case22",
+            "ATM TRANSFER SENDER, Produk ATM": "case23",
+            "ATM WITHDRAWAL, Produk ATM withdrawal": "case24"
         }
         
         # Ambil key dari dictionary mapping. Default ke case1 jika tidak ditemukan (fallback)
