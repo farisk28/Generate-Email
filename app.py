@@ -19,13 +19,7 @@ def format_date(dt):
 # --- MENU DROPDOWN DI SIDEBAR ---
 st.sidebar.header("⚙️ Pengaturan Global")
 
-# Pilihan Bahasa Global (Mempengaruhi seluruh isi email)
-email_lang = st.sidebar.selectbox(
-    "Pilih Bahasa Email (Global Language):",
-    options=["Bahasa Indonesia", "English"]
-)
-
-# Pilihan Kasus Router (Case 1 s.d Case 10)
+# Pilihan Kasus Router Menggunakan Format Buatan User
 chosen_case = st.sidebar.selectbox(
     "Pilih Jenis Case Investigasi:",
     options=[
@@ -42,6 +36,17 @@ chosen_case = st.sidebar.selectbox(
         "Case 10: EMAIL ISSUER PROCODE 263000, Produk QR"
     ]
 )
+
+# LOGIKA SMART UI: Pilihan bahasa hanya muncul jika di dalam nama case ada kata "CB" (Cross Border)
+if "CB" in chosen_case:
+    actual_lang = st.sidebar.selectbox(
+        "Pilih Bahasa Email (Khusus Produk QRCB):",
+        options=["Bahasa Indonesia", "English"],
+        help="Gunakan English untuk partner internasional, dan Bahasa Indonesia untuk partner lokal."
+    )
+else:
+    # Mengunci ke Bahasa Indonesia untuk semua produk domestik/QR reguler
+    actual_lang = "Bahasa Indonesia"
 
 target_name = st.sidebar.text_input("Nama Instansi Target (cth: NOBU / DANA / BCA / ShopeePay / Bank Jago)", value="DANA")
 
@@ -107,21 +112,19 @@ if uploaded_file is not None:
                 top_nominal_str = str(int(top_nominal))
                 is_keriting = bool(re.search(r'(\d)\1\1', top_nominal_str))
                 
-                # Cek Pola Kelompok Nominal (Sama / Keriting / Unik)
-                if email_lang == "Bahasa Indonesia":
+                # Cek Pola Kelompok Nominal berdasarkan bahasa yang aktif
+                if actual_lang == "Bahasa Indonesia":
                     if is_keriting and (top_nominal_freq / total_trx) > 0.4:
                         indikasi_nominal = "Transaksi didominasi dengan pola angka keriting"
                     elif (top_nominal_freq / total_trx) > 0.6:
                         indikasi_nominal = "Transaksi dilakukan dengan nominal yang sama"
                     else:
-                        # Pola Unik Berdasarkan Range Digit Jutaan
                         sample_amount = str(int(top_nominal))
                         if len(sample_amount) >= 7:
                             indikasi_nominal = f"Transaksi didominasi dengan nominal yang besar dan unik yaitu Rp {sample_amount[0]},{sample_amount[1:3]}xx,xxx"
                         else:
                             indikasi_nominal = "Transaksi didominasi dengan nominal yang unik"
                 else:
-                    # English Term
                     if is_keriting and (top_nominal_freq / total_trx) > 0.4:
                         indikasi_nominal = "Transactions are dominated by repetitive/patterned numbers (angka keriting)"
                     elif (top_nominal_freq / total_trx) > 0.6:
@@ -143,15 +146,13 @@ if uploaded_file is not None:
         mpan_display = df['MPAN_Masking'].iloc[0] if 'MPAN_Masking' in df.columns and len(df) > 0 else "[MPAN]"
         m_name = df['Merchant_Name'].iloc[0] if unique_merchants > 0 else "[MERCHANT]"
 
-        # Menggabungkan nomor kartu CPAN jika ada lebih dari 1 untuk draf text
         if 'CPAN_Masking' in df.columns:
             cpans_list = df['CPAN_Masking'].unique().tolist()
             cpan_list_string = ", ".join(cpans_list)
         else:
             cpan_list_string = cpan_display
 
-        # String Kondisi Kenaikan TPV atau Multi-Card
-        if email_lang == "Bahasa Indonesia":
+        if actual_lang == "Bahasa Indonesia":
             cpan_count_string = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} CPAN berbeda"
             if unique_cpans == 1 and unique_merchants == 1:
                 indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada 1 Merchant yang sama yaitu {m_name}"
@@ -160,7 +161,6 @@ if uploaded_file is not None:
             else:
                 indikasi_cpan_merchant = "Transaksi dilakukan secara berulang oleh beberapa CPAN pada merchant yang sama"
         else:
-            # English
             cpan_count_string_en = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} different CPANs"
             if unique_cpans == 1 and unique_merchants == 1:
                 indikasi_cpan_merchant = f"Transactions were performed by 1 CPAN at the same 1 Merchant"
@@ -169,7 +169,6 @@ if uploaded_file is not None:
             else:
                 indikasi_cpan_merchant = "Repeated transactions conducted by the same CPANs at the same merchant"
 
-        # Logika Gabungan Nama Merchant Banyak (Case 3)
         if unique_merchants > 1:
             all_merchants = df['Merchant_Name'].unique().tolist()
             if len(all_merchants) > 1:
@@ -179,23 +178,23 @@ if uploaded_file is not None:
         else:
             merchant_list_string = m_name
 
-        # D. Deteksi Limit Akumulasi Nominal Per-CPAN (> 50 Juta)
+        # C. Deteksi Limit Akumulasi Nominal Per-CPAN
         indikasi_limit_cpan = ""
         if 'CPAN_Masking' in df.columns and 'Amount_Trx' in df.columns:
             cpan_grp = df.groupby('CPAN_Masking')['Amount_Trx'].sum()
             over_limit_count = len(cpan_grp[cpan_grp > 50000000])
             if over_limit_count > 0:
-                if email_lang == "Bahasa Indonesia":
+                if actual_lang == "Bahasa Indonesia":
                     indikasi_limit_cpan = f"1 CPAN melakukan transaksi dengan total > Rp 50 Juta" if unique_cpans == 1 else f"Terdapat CPAN yang melakukan transaksi dengan akumulasi > Rp 50 Juta"
                 else:
                     indikasi_limit_cpan = f"1 CPAN performed transactions with total > IDR 50 Million"
             else:
-                if email_lang == "Bahasa Indonesia":
+                if actual_lang == "Bahasa Indonesia":
                     indikasi_limit_cpan = f"1 CPAN melakukan transaksi dengan total nilai Rp {formatted_amount}" if unique_cpans == 1 else f"Total keseluruhan transaksi adalah Rp {formatted_amount}"
                 else:
                     indikasi_limit_cpan = f"1 CPAN conducted transactions with total value IDR {formatted_amount}" if unique_cpans == 1 else f"Total overall transaction value is IDR {formatted_amount}"
 
-        # E. Deteksi Otomatis Response Code & Processing Code (RC 61, RC 107, Procode 263000)
+        # D. Deteksi Otomatis Response Code & Processing Code
         rc_61_count = 0
         rc_107_count = 0
         procode_263000_found = False
@@ -206,8 +205,7 @@ if uploaded_file is not None:
         if 'Procode' in df.columns:
             procode_263000_found = any(df['Procode'].astype(str).str.contains('263000'))
 
-        # Teks Status Decline
-        if email_lang == "Bahasa Indonesia":
+        if actual_lang == "Bahasa Indonesia":
             if rc_61_count > 0:
                 indikasi_decline = "Terdapat transaksi yang mendapatkan Response Code 61"
             elif rc_107_count > 0:
@@ -222,40 +220,39 @@ if uploaded_file is not None:
             else:
                 indikasi_decline = "Repeated transactions occurred within a short time interval"
 
-        # Teks Status Procode
-        if email_lang == "Bahasa Indonesia":
+        if actual_lang == "Bahasa Indonesia":
             indikasi_procode = "Transaksi dilakukan dengan Processing Code 263000" if procode_263000_found else ""
         else:
             indikasi_procode = "Transactions were conducted using Processing Code 263000" if procode_263000_found else ""
 
         # =================================================================================
 
-        # 3. MAPPING KUNCI KASUS BERDASARKAN PILIHAN USER
-        if chosen_case.startswith("Case 1:"):
+        # 3. MAPPING KUNCI KASUS BERDASARKAN STRING YANG DIPILIH
+        if "Case 1:" in chosen_case:
             case_key = "case1"
-        elif chosen_case.startswith("Case 2:"):
+        elif "Case 2:" in chosen_case:
             case_key = "case2"
-        elif chosen_case.startswith("Case 3:"):
+        elif "Case 3:" in chosen_case:
             case_key = "case3"
-        elif chosen_case.startswith("Case 4:"):
+        elif "Case 4:" in chosen_case:
             case_key = "case4"
-        elif chosen_case.startswith("Case 5:"):
+        elif "Case 5:" in chosen_case and "(Acquirer)" in chosen_case:
             case_key = "case5"
-        elif chosen_case.startswith("Case 5-Issuer:"):
+        elif "Case 5:" in chosen_case and "(Issuer)" in chosen_case:
             case_key = "case5_issuer"
-        elif chosen_case.startswith("Case 6:"):
+        elif "Case 6:" in chosen_case:
             case_key = "case6"
-        elif chosen_case.startswith("Case 7:"):
+        elif "Case 7:" in chosen_case:
             case_key = "case7"
-        elif chosen_case.startswith("Case 8:"):
+        elif "Case 8:" in chosen_case:
             case_key = "case8"
-        elif chosen_case.startswith("Case 9:"):
+        elif "Case 9:" in chosen_case:
             case_key = "case9"
         else:
             case_key = "case10"
 
-        # Gabungkan kode kasus dengan kode bahasa (_id atau _en)
-        final_key = f"{case_key}_id" if email_lang == "Bahasa Indonesia" else f"{case_key}_en"
+        # Terapkan suffix bahasa dinamis (_id atau _en) mengikuti bahasa yang terkunci
+        final_key = f"{case_key}_id" if actual_lang == "Bahasa Indonesia" else f"{case_key}_en"
 
         # Memuat master draf teks dari templates.py
         template_raw = TEMPLATES[final_key]
@@ -280,15 +277,18 @@ if uploaded_file is not None:
             cpan_count_string_en=cpan_count_string_en if 'cpan_count_string_en' in locals() else ""
         )
 
+        # Membersihkan spasi atau baris kosong yang berlebih akibat logika yang kosong
+        email_text = "\n".join([line for line in email_text.split('\n') if line.strip() != ""])
+
         # --- TAMPILAN OUTPUT UTAMA ---
         st.subheader("📋 Hasil Ekstraksi Draf Teks Email")
-        st.info(f"🌐 **Bahasa Aktif:** {email_lang} | **Target Router Aturan:** `{final_key}`")
+        st.info(f"🌐 **Bahasa Aktif:** {actual_lang} | **Target Router Aturan:** `{final_key}`")
         st.text_area("Salin teks hasil otomatisasi di bawah ini:", value=email_text, height=500)
         
         st.download_button(
             label="📥 Download Teks Email (.txt)",
             data=email_text,
-            file_name=f"Draf_FDS_{target_name}_{email_lang[:2].lower()}.txt",
+            file_name=f"Draf_FDS_{target_name}_{actual_lang[:2].lower()}.txt",
             mime="text/plain"
         )
 
