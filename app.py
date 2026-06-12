@@ -109,13 +109,19 @@ if uploaded_file is not None:
         st.success("File data transaksi berhasil dimuat dan dianalisis!")
 
         # 2. Pembersihan Data Masukan
+        df.dropna(how='all', inplace=True)
+        
         for col in df.columns:
             df[col] = df[col].astype(str).str.strip("'").str.strip()
                 
         if 'Merchant_Name' in df.columns:
-            df['Merchant_Name'] = df['Merchant_Name'].apply(lambda x: " ".join(x.split()))
+            df['Merchant_Name'] = df['Merchant_Name'].apply(lambda x: " ".join(str(x).split()) if pd.notnull(x) and str(x).lower() != 'nan' else "")
+            
         if 'Amount_Trx' in df.columns:
             df['Amount_Trx'] = pd.to_numeric(df['Amount_Trx'], errors='coerce')
+            
+        df.dropna(subset=['Amount_Trx'], inplace=True)
+            
         if 'Date_Time' in df.columns:
             df['Date_Time'] = pd.to_datetime(df['Date_Time'], errors='coerce')
 
@@ -134,35 +140,45 @@ if uploaded_file is not None:
             if len(dini_hari_trx) > 0:
                 dini_hari_found = True
 
-        # A. Pengkondisian Deteksi Nominal
-        is_keriting = False
+        # =================================================================================
+        # A. KEMBALI MENGGUNAKAN LOGIKA PINTAR MODULO 1000 (ANGKA KERITING)
+        # =================================================================================
         formatted_top_nominal = "0"
+        indikasi_nominal = ""
+        
         if 'Amount_Trx' in df.columns and not df['Amount_Trx'].empty:
-            nominal_counts = df['Amount_Trx'].value_counts()
-            if not nominal_counts.empty:
-                top_nominal = nominal_counts.index[0]
-                formatted_top_nominal = f"{int(top_nominal):,}".replace(",", ".")
-                top_nominal_freq = nominal_counts.iloc[0]
-                is_keriting = bool(re.search(r'(\d)\1\1', str(int(top_nominal))))
+            top_nominal = df['Amount_Trx'].mode()[0]
+            top_nominal_freq = (df['Amount_Trx'] == top_nominal).sum()
+            rasio_sama = top_nominal_freq / total_trx
+            formatted_top_nominal = f"{int(top_nominal):,}".replace(",", ".")
+            
+            # Deteksi Angka Keriting menggunakan Modulo (Sisa Bagi 1000)
+            # Semua yang TIDAK habis dibagi 1000 dianggap keriting/unik
+            df_keriting = df[df['Amount_Trx'] % 1000 != 0]
+            rasio_keriting = len(df_keriting) / total_trx
+            
+            if rasio_sama > 0.6:
+                if actual_lang == "Bahasa Indonesia":
+                    indikasi_nominal = f"Transaksi didominasi dengan nominal yang sama yaitu Rp {formatted_top_nominal}"
+                else:
+                    indikasi_nominal = f"Transactions are dominated by the same amount, which is IDR {formatted_top_nominal}"
+                    
+            elif rasio_keriting > 0.3: # Jika lebih dari 30% datanya keriting
+                # Ambil hingga 3 sampel angka keriting langsung dari datamu
+                sampel_unik = df_keriting['Amount_Trx'].drop_duplicates().head(3).astype(int)
+                sampel_str = ", ".join([f"Rp{x:,}".replace(",", ".") for x in sampel_unik])
                 
                 if actual_lang == "Bahasa Indonesia":
-                    if is_keriting and (top_nominal_freq / total_trx) > 0.4:
-                        indikasi_nominal = f"Transaksi didominasi dengan angka keriting, seperti Rp{formatted_top_nominal}, dst"
-                    elif (top_nominal_freq / total_trx) > 0.6:
-                        indikasi_nominal = f"Transaksi didominasi dengan nominal yang sama yaitu Rp {formatted_top_nominal}"
-                    else:
-                        sample_amount = str(int(top_nominal))
-                        if len(sample_amount) >= 7:
-                            indikasi_nominal = f"Transaksi didominasi dengan nominal yang mirip/unik yaitu Rp {sample_amount[0]},{sample_amount[1:3]}xx,xxx"
-                        else:
-                            indikasi_nominal = f"Transaksi didominasi dengan angka unik, seperti Rp{formatted_top_nominal}, dst"
+                    indikasi_nominal = f"Transaksi didominasi dengan angka unik/keriting, seperti {sampel_str}, dst"
                 else:
-                    if is_keriting and (top_nominal_freq / total_trx) > 0.4:
-                        indikasi_nominal = "Transactions are dominated by repetitive/patterned numbers (angka keriting)"
-                    else:
-                        indikasi_nominal = f"Transactions are dominated by the same amount, which is IDR {formatted_top_nominal}"
-        else:
-            indikasi_nominal = ""
+                    sampel_str_en = sampel_str.replace("Rp", "IDR ")
+                    indikasi_nominal = f"Transactions are dominated by unique/patterned amounts, such as {sampel_str_en}, etc."
+                    
+            else:
+                if actual_lang == "Bahasa Indonesia":
+                    indikasi_nominal = "Transaksi dilakukan dengan pola nominal yang bervariasi"
+                else:
+                    indikasi_nominal = "Transactions were conducted with varied amounts"
 
         # B. Deteksi Unik CPAN & Merchant
         unique_cpans = df['CPAN_Masking'].nunique() if 'CPAN_Masking' in df.columns else 0
@@ -275,12 +291,12 @@ if uploaded_file is not None:
         )
 
         # === PEMBERSIH PINTAR (SMART CLEANER) ===
-        # Hanya menghapus baris peluru/angka yang benar-benar kosong variabelnya (contoh "4. "), 
-        # TAPI membiarkan baris kosong (enter/spasi antar paragraf) tetap utuh!
+        # Hanya menghapus baris peluru (1. / 2. / 3.) yang benar-benar kosong variabelnya.
+        # Menjaga baris kosong (enter) tetap utuh agar paragraf tidak menempel.
         cleaned_lines = []
         for line in email_text.split('\n'):
             if re.match(r'^\d+\.\s*$', line.strip()):
-                continue # Skip jika baris ini hanya nomor urut yang kosong
+                continue 
             cleaned_lines.append(line)
             
         email_text = "\n".join(cleaned_lines)
