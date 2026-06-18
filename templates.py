@@ -34,7 +34,7 @@ Hotline Whatsapp : 0851 7968 1636
 PT. ALTO Network"""
 
 
-# ================= KAMUS TEMPLATE LENGKAP (24 CASE FDS) =================
+# ================= KAMUS TEMPLATE LENGKAP (FDS) =================
 TEMPLATES = {
     # -----------------------------------------------------------------
     # KELOMPOK DOMESTIK (HANYA BAHASA INDONESIA)
@@ -52,7 +52,7 @@ Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut:
 5. Transaksi terjadi pada periode {min_date} - {max_date}
  
 Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
-1. Apakah dari sisi merchant terdapat indikasi abuse? 
+1. Apakah dari sisi merchant terdapat indikasi abuse?
 2. Apakah sedang dilakukan pameran?
 3. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir? 
 4. Apakah profil merchant sesuai dengan pola transaksinya? 
@@ -395,6 +395,38 @@ Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi perta
 3. Bagaimana kebijakan transaksi dari sisi Issuer jika transaksi tersebut mendapatkan Response Code 55 atau Response Code 59? 
 4. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
 
+    "case25_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini, kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada Customer Account Number ({cpan_list_string}). 
+ 
+Adapun Anomali transaksi yang kami temukan terkait transaksi tersebut : 
+1. Total nilai transaksi mencapai Rp {formatted_amount} dan terjadi dalam rentang waktu yang berdekatan 
+2. Terdapat pola transaksi penarikan tunai berulang melalui fitur cardless 
+3. {indikasi_nominal} 
+4. {indikasi_cpan_merchant} 
+5. Frekuensi transaksi terjadi dalam periode {min_date} - {max_date} 
+6. {indikasi_decline} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya? 
+4. Apakah jika terjadi kesalahan sudah 3 kali akan terjadi pemblokiran akun ?""" + FOOTER_ID,
+
+    "case26_id": """Dear Rekan {target_name}, 
+ 
+Berkaitan dengan email ini kami pihak (switching) memiliki kewajiban sebagai Penyelenggara Infrastruktur Pembayaran untuk memastikan keamanan perlindungan konsumen. Mohon bantuannya untuk dapat melakukan pengecekan (due diligence) terhadap transaksi berpotensi fraud yang terjadi pada PAN ({cpan_list_string}). 
+ 
+Adapun indikasi yang kami temukan terkait transaksi tersebut : 
+1. Total nilai transaksi mencapai Rp {formatted_amount} 
+2. Transaksi dilakukan dalam rentang waktu yang berdekatan 
+3. {indikasi_cpan_merchant} 
+4. Transaksi dilakukan dalam periode waktu {min_date} - {max_date} 
+ 
+Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut:   
+1. Apakah semua transaksi pada file terlampir benar dilakukan oleh nasabah sendiri ? 
+2. Jika saat ini sedang berlangsung kegiatan Promo dari sisi Issuer, apakah transaksi tersebut sudah sesuai dengan syarat & ketentuan yang berlaku? 
+3. Jika transaksi tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya?""" + FOOTER_ID,
 
     # -----------------------------------------------------------------
     # KELOMPOK CROSS BORDER (QRCB) - BILINGUAL (ID & EN)
