@@ -17,7 +17,6 @@ def format_date(dt):
     return f"{dt.month}/{dt.day}/{dt.year} {dt.strftime('%H:%M:%S')}"
 
 # --- DATABASE KATEGORI PRODUK & FORMAT CASE LENGKAP ---
-# Urutan disesuaikan dan suffix nama produk dihapus agar lebih bersih
 PRODUCT_CASES = {
     "QR Domestik": [
         "MERCHANT",
@@ -26,8 +25,8 @@ PRODUCT_CASES = {
         "ISSUER LEBIH DARI 1",
         "NAMA MERCHANT ANOMALI (Acquirer)",
         "NAMA MERCHANT ANOMALI (Issuer)",
-        "ACQUIRER QR DOM APPROVE > 50 KALI",
-        "ISSUER QR DOM APPROVE > 50 KALI",
+        "ACQUIRER QR APPROVE > 50 KALI",
+        "ISSUER QR APPROVE > 50 KALI",
         "MERCHANT KENAIKAN TPV RC 107 / RC 59",
         "ISSUER KENAIKAN MERCHANT RC 107",
         "ISSUER SUSPECT RC 59",
@@ -36,7 +35,7 @@ PRODUCT_CASES = {
     "QR Cross Border (QRCB)": [
         "ACQUIRER QRCB INBOUND",
         "ACQUIRER QRCB OUTBOUND",
-        "ISSUER QRCB INBOUND",
+        "ISSUER/CUSTOMER QRCB",
         "ISSUER QRCB OUTBOUND"
     ],
     "Disbursement": [
@@ -53,6 +52,12 @@ PRODUCT_CASES = {
         "ATM BEDA KOTA",
         "ATM TRANSFER SENDER",
         "ATM WITHDRAWAL"
+    ],
+    "Cardless": [
+        "CARDLESS DECLINE"
+    ],
+    "Debit": [
+        "PAN DEBIT"
     ]
 }
 
@@ -217,10 +222,13 @@ if uploaded_file is not None:
         # Kondisi CPAN & Merchant (Indonesia / English)
         if actual_lang == "Bahasa Indonesia":
             cpan_count_string = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} CPAN berbeda"
+            
             if "QR TRANSFER 1 SENDER 1 BENEFICIARY" in chosen_case:
                 indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN yang sama pada 1 Benef PAN"
+            elif "CARDLESS" in chosen_case:
+                indikasi_cpan_merchant = f"Transaksi dilakukan oleh {unique_cpans} customer berbeda pada masing-masing merchant yang berbeda" if unique_cpans > 1 else "Transaksi dilakukan pada masing-masing merchant yang berbeda"
             else:
-                indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 CPAN pada 1 Merchant yang sama yaitu {m_name}" if unique_cpans == 1 else "Transaksi dilakukan oleh CPAN yang sama pada merchant yang berbeda"
+                indikasi_cpan_merchant = f"Transaksi dilakukan oleh 1 PAN pada 1 Merchant yang sama yaitu {m_name}" if unique_cpans == 1 else "Transaksi dilakukan oleh PAN yang sama pada merchant yang berbeda"
         else:
             cpan_count_string_en = f"1 CPAN" if unique_cpans == 1 else f"{unique_cpans} different CPANs"
             indikasi_cpan_merchant = "Repeated transactions conducted by the same CPANs at the same merchant"
@@ -267,7 +275,7 @@ if uploaded_file is not None:
 
         # =================================================================================
 
-        # 3. INTERPRETER KUNCI KASUS (Mapping Exact String yang sudah dirapikan)
+        # 3. INTERPRETER KUNCI KASUS (Mapping Exact String)
         case_map = {
             "MERCHANT": "case1",
             "MERCHANT KENAIKAN TPV RC 107 / RC 59": "case2",
@@ -293,7 +301,9 @@ if uploaded_file is not None:
             "QR TRANSFER 1 SENDER 1 BENEFICIARY": "case21",
             "ATM BEDA KOTA": "case22",
             "ATM TRANSFER SENDER": "case23",
-            "ATM WITHDRAWAL": "case24"
+            "ATM WITHDRAWAL": "case24",
+            "CARDLESS DECLINE": "case25",
+            "PAN DEBIT": "case26"
         }
         
         case_key = case_map.get(chosen_case, "case1")
