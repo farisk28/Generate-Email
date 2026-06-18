@@ -53,10 +53,11 @@ Indikasi yang kami temukan terkait transaksi tersebut adalah sebagai berikut:
  
 Serta, mohon bantuannya untuk melakukan konfirmasi terkait dengan indikasi pertanyaan berikut: 
 1. Apakah dari sisi merchant terdapat indikasi abuse? 
-2. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir? 
-3. Apakah profil merchant sesuai dengan pola transaksinya? 
-4. Apakah merchant merupakan merchant online, jika iya apakah ada link web merchant/transaksi-nya ? 
-5. Jika transaksi di merchant tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
+2. Apakah sedang dilakukan pameran?
+3. Barang / jasa apa yang ditawarkan merchant pada transaksi terlampir? 
+4. Apakah profil merchant sesuai dengan pola transaksinya? 
+5. Apakah merchant merupakan merchant online, jika iya apakah ada link web merchant/transaksi-nya ? 
+6. Jika transaksi di merchant tersebut merupakan transaksi genuine, mohon untuk memberikan penjelasannya.""" + FOOTER_ID,
 
     "case2_id": """Dear Rekan {target_name}, 
 
