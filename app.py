@@ -17,40 +17,42 @@ def format_date(dt):
     return f"{dt.month}/{dt.day}/{dt.year} {dt.strftime('%H:%M:%S')}"
 
 # --- DATABASE KATEGORI PRODUK & FORMAT CASE LENGKAP ---
+# Disusun berurutan sesuai nomor case historis (1 s/d 24)
 PRODUCT_CASES = {
     "QR Domestik": [
-        "ACQUIRER/MERCHANT, Produk QR",
-        "MERCHANT LEBIH DARI 1, Produk QR",
-        "NAMA MERCHANT ANOMALI (Acquirer), Produk QR",
-        "NAMA MERCHANT ANOMALI (Issuer), Produk QR",
-        "ISSUER LEBIH DARI 1 CPAN, Produk QR",
-        "ISSUER/CUSTOMER, Produk QR",
-        "ISSUER PROCODE 263000, Produk QR",
-        "ISSUER SUSPECT RC 59, Produk QR",
-        "ISSUER KENAIKAN MERCHANT RC 107, Produk QR",
-        "ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR",
-        "ISSUER QR DOM APPROVE > 50 KALI, Produk QR"
+        "ACQUIRER/MERCHANT, Produk QR",                                  # Case 1
+        "MERCHANT KENAIKAN TPV RC 107 / RC 59, Produk QR",               # Case 2 (Dikembalikan)
+        "MERCHANT LEBIH DARI 1, Produk QR",                              # Case 3
+        "NAMA MERCHANT ANOMALI (Acquirer), Produk QR",                   # Case 5 (Acquirer)
+        "NAMA MERCHANT ANOMALI (Issuer), Produk QR",                     # Case 5 (Issuer)
+        "ISSUER LEBIH DARI 1 CPAN, Produk QR",                           # Case 8
+        "ISSUER/CUSTOMER, Produk QR",                                    # Case 9
+        "ISSUER PROCODE 263000, Produk QR",                              # Case 10
+        "ISSUER SUSPECT RC 59, Produk QR",                               # Case 11
+        "ISSUER KENAIKAN MERCHANT RC 107, Produk QR",                    # Case 13
+        "ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR",                  # Case 14
+        "ISSUER QR DOM APPROVE > 50 KALI, Produk QR"                     # Case 15
     ],
     "QR Cross Border (QRCB)": [
-        "ACQUIRER QRCB INBOUND, Produk QR CB",
-        "ACQUIRER QRCB OUTBOUND, Produk QR CB",
-        "ISSUER/CUSTOMER QRCB, Produk QR CB",
-        "ISSUER QRCB OUTBOUND, Produk QR CB"
+        "ACQUIRER QRCB INBOUND, Produk QR CB",                           # Case 4
+        "ACQUIRER QRCB OUTBOUND, Produk QR CB",                          # Case 6
+        "ISSUER/CUSTOMER QRCB, Produk QR CB",                            # Case 7
+        "ISSUER QRCB OUTBOUND, Produk QR CB"                             # Case 12
     ],
     "Disbursement": [
-        "DISBURSEMENT SENDER, Produk Disbursement",
-        "DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary",
-        "DISBURSEMENT SENDER CV/PT, Produk Disbursement",
-        "BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement"
+        "DISBURSEMENT SENDER, Produk Disbursement",                      # Case 16
+        "DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary",       # Case 17
+        "DISBURSEMENT SENDER CV/PT, Produk Disbursement",                # Case 18
+        "BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement"         # Case 19
     ],
     "QR Transfer": [
-        "QR TRANSFER BENEFICIARY, Produk QR Transfer",
-        "QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer"
+        "QR TRANSFER BENEFICIARY, Produk QR Transfer",                   # Case 20
+        "QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer"         # Case 21
     ],
     "ATM": [
-        "ATM BEDA KOTA, Produk ATM",
-        "ATM TRANSFER SENDER, Produk ATM",
-        "ATM WITHDRAWAL, Produk ATM withdrawal"
+        "ATM BEDA KOTA, Produk ATM",                                     # Case 22
+        "ATM TRANSFER SENDER, Produk ATM",                               # Case 23
+        "ATM WITHDRAWAL, Produk ATM withdrawal"                          # Case 24
     ]
 }
 
@@ -140,9 +142,7 @@ if uploaded_file is not None:
             if len(dini_hari_trx) > 0:
                 dini_hari_found = True
 
-        # =================================================================================
-        # A. KEMBALI MENGGUNAKAN LOGIKA PINTAR MODULO 1000 (ANGKA KERITING)
-        # =================================================================================
+        # A. Pengkondisian Deteksi Nominal (Smart Modulo)
         formatted_top_nominal = "0"
         indikasi_nominal = ""
         
@@ -152,8 +152,6 @@ if uploaded_file is not None:
             rasio_sama = top_nominal_freq / total_trx
             formatted_top_nominal = f"{int(top_nominal):,}".replace(",", ".")
             
-            # Deteksi Angka Keriting menggunakan Modulo (Sisa Bagi 1000)
-            # Semua yang TIDAK habis dibagi 1000 dianggap keriting/unik
             df_keriting = df[df['Amount_Trx'] % 1000 != 0]
             rasio_keriting = len(df_keriting) / total_trx
             
@@ -163,8 +161,7 @@ if uploaded_file is not None:
                 else:
                     indikasi_nominal = f"Transactions are dominated by the same amount, which is IDR {formatted_top_nominal}"
                     
-            elif rasio_keriting > 0.3: # Jika lebih dari 30% datanya keriting
-                # Ambil hingga 3 sampel angka keriting langsung dari datamu
+            elif rasio_keriting > 0.3:
                 sampel_unik = df_keriting['Amount_Trx'].drop_duplicates().head(3).astype(int)
                 sampel_str = ", ".join([f"Rp{x:,}".replace(",", ".") for x in sampel_unik])
                 
@@ -245,9 +242,10 @@ if uploaded_file is not None:
 
         # =================================================================================
 
-        # 3. INTERPRETER KUNCI KASUS (Mapping Exact String ke Template Key)
+        # 3. INTERPRETER KUNCI KASUS (Mapping Exact String)
         case_map = {
             "ACQUIRER/MERCHANT, Produk QR": "case1",
+            "MERCHANT KENAIKAN TPV RC 107 / RC 59, Produk QR": "case2",
             "MERCHANT LEBIH DARI 1, Produk QR": "case3",
             "ACQUIRER QRCB INBOUND, Produk QR CB": "case4",
             "NAMA MERCHANT ANOMALI (Acquirer), Produk QR": "case5",
@@ -275,7 +273,6 @@ if uploaded_file is not None:
         
         # Ambil key dari dictionary mapping. Default ke case1 jika tidak ditemukan
         case_key = case_map.get(chosen_case, "case1")
-
         final_key = f"{case_key}_id" if actual_lang == "Bahasa Indonesia" else f"{case_key}_en"
 
         template_raw = TEMPLATES[final_key]
@@ -291,8 +288,6 @@ if uploaded_file is not None:
         )
 
         # === PEMBERSIH PINTAR (SMART CLEANER) ===
-        # Hanya menghapus baris peluru (1. / 2. / 3.) yang benar-benar kosong variabelnya.
-        # Menjaga baris kosong (enter) tetap utuh agar paragraf tidak menempel.
         cleaned_lines = []
         for line in email_text.split('\n'):
             if re.match(r'^\d+\.\s*$', line.strip()):
