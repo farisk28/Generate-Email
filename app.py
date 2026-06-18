@@ -20,39 +20,39 @@ def format_date(dt):
 # Disusun berurutan sesuai nomor case historis (1 s/d 24)
 PRODUCT_CASES = {
     "QR Domestik": [
-        "ACQUIRER/MERCHANT, Produk QR",                                  # Case 1
-        "MERCHANT KENAIKAN TPV RC 107 / RC 59, Produk QR",               # Case 2 (Dikembalikan)
-        "MERCHANT LEBIH DARI 1, Produk QR",                              # Case 3
-        "NAMA MERCHANT ANOMALI (Acquirer), Produk QR",                   # Case 5 (Acquirer)
-        "NAMA MERCHANT ANOMALI (Issuer), Produk QR",                     # Case 5 (Issuer)
-        "ISSUER LEBIH DARI 1 CPAN, Produk QR",                           # Case 8
-        "ISSUER/CUSTOMER, Produk QR",                                    # Case 9
-        "ISSUER PROCODE 263000, Produk QR",                              # Case 10
-        "ISSUER SUSPECT RC 59, Produk QR",                               # Case 11
-        "ISSUER KENAIKAN MERCHANT RC 107, Produk QR",                    # Case 13
-        "ACQUIRER QR DOM APPROVE > 50 KALI, Produk QR",                  # Case 14
-        "ISSUER QR DOM APPROVE > 50 KALI, Produk QR"                     # Case 15
+        "ACQUIRER/MERCHANT",                                  # Case 1
+        "MERCHANT KENAIKAN TPV RC 107 / RC 59",               # Case 2 (Dikembalikan)
+        "MERCHANT LEBIH DARI 1",                              # Case 3
+        "NAMA MERCHANT ANOMALI (Acquirer)",                   # Case 5 (Acquirer)
+        "NAMA MERCHANT ANOMALI (Issuer)",                     # Case 5 (Issuer)
+        "ISSUER LEBIH DARI 1 CPAN",                           # Case 8
+        "ISSUER/CUSTOMER",                                    # Case 9
+        "ISSUER PROCODE 263000",                              # Case 10
+        "ISSUER SUSPECT RC 59",                               # Case 11
+        "ISSUER KENAIKAN MERCHANT RC 107",                    # Case 13
+        "ACQUIRER QR DOM APPROVE > 50 KALI",                  # Case 14
+        "ISSUER QR DOM APPROVE > 50 KALI"                     # Case 15
     ],
     "QR Cross Border (QRCB)": [
-        "ACQUIRER QRCB INBOUND, Produk QR CB",                           # Case 4
-        "ACQUIRER QRCB OUTBOUND, Produk QR CB",                          # Case 6
-        "ISSUER/CUSTOMER QRCB, Produk QR CB",                            # Case 7
-        "ISSUER QRCB OUTBOUND, Produk QR CB"                             # Case 12
+        "ACQUIRER QRCB INBOUND",                           # Case 4
+        "ACQUIRER QRCB OUTBOUND",                          # Case 6
+        "ISSUER QRCB INBOUND",                            # Case 7
+        "ISSUER QRCB OUTBOUND"                             # Case 12
     ],
     "Disbursement": [
-        "DISBURSEMENT SENDER, Produk Disbursement",                      # Case 16
-        "DISBURSEMENT 1 SENDER 1 BENEFICIARY, Produk Beneficiary",       # Case 17
-        "DISBURSEMENT SENDER CV/PT, Produk Disbursement",                # Case 18
-        "BENEFICIARY TRANSFER DISBURSEMENT, Produk Disbursement"         # Case 19
+        "DISBURSEMENT SENDER",                      # Case 16
+        "DISBURSEMENT 1 SENDER 1 BENEFICIARY",       # Case 17
+        "DISBURSEMENT SENDER CV/PT",                # Case 18
+        "BENEFICIARY TRANSFER DISBURSEMENT"         # Case 19
     ],
     "QR Transfer": [
-        "QR TRANSFER BENEFICIARY, Produk QR Transfer",                   # Case 20
-        "QR TRANSFER 1 SENDER 1 BENEFICIARY, Produk QR Transfer"         # Case 21
+        "QR TRANSFER BENEFICIARY",                   # Case 20
+        "QR TRANSFER 1 SENDER 1 BENEFICIARY"         # Case 21
     ],
     "ATM": [
         "ATM BEDA KOTA, Produk ATM",                                     # Case 22
-        "ATM TRANSFER SENDER, Produk ATM",                               # Case 23
-        "ATM WITHDRAWAL, Produk ATM withdrawal"                          # Case 24
+        "ATM TRANSFER SENDER",                               # Case 23
+        "ATM WITHDRAWAL"                          # Case 24
     ]
 }
 
